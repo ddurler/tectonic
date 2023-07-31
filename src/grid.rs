@@ -10,6 +10,72 @@ impl LineColumn {
     }
 }
 
+/// Positions voisines d'une case
+#[derive(Debug)]
+struct NeighboringLineColumns {
+    // On utilise ici le type 'isize' pour les calculs pour éviter les débordements avec des 'u8'
+    line_column: (isize, isize),
+    yield_directions: Vec<(isize, isize)>,
+    max_line_column: (isize, isize),
+}
+
+impl NeighboringLineColumns {
+    #[allow(dead_code)]
+    pub fn new(line_column: LineColumn, max_line_column: (u8, u8)) -> Self {
+        NeighboringLineColumns {
+            line_column: (line_column.0 as isize, line_column.1 as isize),
+            yield_directions: Vec::new(),
+            max_line_column: (max_line_column.0 as isize, max_line_column.1 as isize),
+        }
+    }
+}
+
+impl Iterator for NeighboringLineColumns {
+    type Item = LineColumn;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Toutes les directions possibles autour de la case
+        let directions: Vec<(isize, isize)> = vec![
+            (-1, 0),
+            (-1, 1),
+            (0, 1),
+            (1, 1),
+            (1, 0),
+            (1, -1),
+            (0, -1),
+            (-1, -1),
+        ];
+
+        // On parcourt toutes les directions non encore étudiées
+        for direction in directions {
+            if !self.yield_directions.contains(&direction) {
+                // Direction qui sera maintenant étudiée
+                self.yield_directions.push(direction);
+                // Case existante ?
+                let neighboring_line = self.line_column.0 + direction.0;
+                if neighboring_line >= 0
+                    && neighboring_line <= self.max_line_column.0
+                    && neighboring_line <= 255
+                {
+                    let neighboring_line = u8::try_from(neighboring_line).unwrap();
+                    let neighboring_column = self.line_column.1 + direction.1;
+                    if neighboring_column >= 0
+                        && neighboring_column <= self.max_line_column.1
+                        && neighboring_column <= 255
+                    {
+                        let neighboring_column = u8::try_from(neighboring_column).unwrap();
+                        // Case possible, on retourne cette case
+                        return Some(LineColumn(neighboring_line, neighboring_column));
+                    }
+                }
+            }
+        }
+
+        // Plus de case voisine...
+        None
+    }
+}
+
 /// Information pour une zone de la grille tectonic
 #[derive(Debug, Default)]
 pub struct Zone {
@@ -116,6 +182,56 @@ impl Grid {
 mod test {
 
     use super::*;
+
+    #[test]
+    fn test_neighboring_cells() {
+        // La grille est limité à (5, 5)
+        let max_line_column = (5, 5);
+
+        // Ce jeu de tests définit la case centrale et la liste des cases voisines dans la grille
+        let vec_tests = vec![
+            (
+                LineColumn::new(1, 1),
+                vec![
+                    LineColumn::new(0, 0),
+                    LineColumn::new(0, 1),
+                    LineColumn::new(0, 2),
+                    LineColumn::new(1, 0),
+                    LineColumn::new(1, 2),
+                    LineColumn::new(2, 0),
+                    LineColumn::new(2, 1),
+                    LineColumn::new(2, 2),
+                ],
+            ),
+            (
+                LineColumn::new(0, 0),
+                vec![
+                    LineColumn::new(0, 1),
+                    LineColumn::new(1, 0),
+                    LineColumn::new(1, 1),
+                ],
+            ),
+            (
+                LineColumn::new(5, 5),
+                vec![
+                    LineColumn::new(4, 4),
+                    LineColumn::new(4, 5),
+                    LineColumn::new(5, 4),
+                ],
+            ),
+        ];
+
+        for test in vec_tests {
+            // Iterator de toutes les cases voisines
+            let neighboring_cells = NeighboringLineColumns::new(test.0, max_line_column);
+            let neighboring_cells_found: Vec<LineColumn> = neighboring_cells.into_iter().collect();
+
+            // assert_eq!(neighboring_cells_found, test.1) ?
+            for v in test.1 {
+                assert!(neighboring_cells_found.contains(&v))
+            }
+        }
+    }
 
     #[test]
     fn test_add_cell() {
