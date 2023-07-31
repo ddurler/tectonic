@@ -1,15 +1,27 @@
 use std::collections::HashMap;
 
+/// Position (ligne, colonne) d'une case
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+struct LineColumn(u8, u8);
+
+impl LineColumn {
+    fn new(line: u8, column: u8) -> Self {
+        LineColumn(line, column)
+    }
+}
+
 /// Information pour une zone de la grille tectonic
 #[derive(Debug, Default)]
 pub struct Zone {
-    vec_line_column: Vec<(u8, u8)>,
+    c_zone: char,
+    vec_line_column: Vec<LineColumn>,
 }
 
 /// Information pour une case de la grille tectonic
 #[derive(Debug, Default)]
 pub struct Cell {
     c_zone: char,
+    line_column: LineColumn,
     content: Option<u8>,
 }
 
@@ -25,34 +37,38 @@ pub struct Grid {
     hashmap_zones: HashMap<char, Zone>,
 
     // HashMap des différentes cases de la grille
-    // La clef est (ligne, colonne) de la case dans la grille
-    hashmap_cells: HashMap<(u8, u8), Cell>,
+    // La clef est la ligne_colonne de la case dans la grille
+    hashmap_cells: HashMap<LineColumn, Cell>,
 }
 
 impl Grid {
     /// Ajoute le contenu d'une case dans la grille tectonic en précisant
-    /// (`line`, `column`) Coordonnées dans la case où (0, 0) est le coin supérieur gauche
+    /// `tuple_line_column` Coordonnées (u8, u8) dans la grille où (0, 0) est le coin supérieur gauche
     /// `c_zone` représente une zone de la grille par une lettre
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     /// # Panics
     /// Cette fonction panic! si la case (`line`, `column`) est déjà définie
-    pub fn add_cell(&mut self, line_column: (u8, u8), c_zone: char, content: Option<u8>) {
+    pub fn add_cell(&mut self, tuple_line_column: (u8, u8), c_zone: char, content: Option<u8>) {
+        let line_column = LineColumn::new(tuple_line_column.0, tuple_line_column.1);
+
         // Case déjà définie ?
         assert!(
-            self.get_cell(line_column).is_none(),
+            self.get_cell(&line_column).is_none(),
             "La case ligne={} colonne={} est définie plusieurs fois",
-            line_column.0,
-            line_column.1
+            line_column.clone().0,
+            line_column.clone().1
         );
 
-        self.max_nb_line = u8::max(self.max_nb_line, line_column.0);
-        self.max_nb_column = u8::max(self.max_nb_column, line_column.1);
+        self.max_nb_line = u8::max(self.max_nb_line, line_column.clone().0);
+        self.max_nb_column = u8::max(self.max_nb_column, line_column.clone().1);
 
         let zone = self.get_or_create_zone(c_zone);
-        zone.vec_line_column.push(line_column);
+        zone.c_zone = c_zone;
+        zone.vec_line_column.push(line_column.clone());
 
-        let cell = self.get_or_create_cell(line_column);
+        let cell = self.get_or_create_cell(&line_column);
         cell.c_zone = c_zone;
+        cell.line_column = line_column;
         cell.content = content;
     }
 
@@ -77,21 +93,22 @@ impl Grid {
             .or_insert_with(Zone::default)
     }
 
-    /// Assesseur à une zone de la grille (None) si elle n'existe pas
+    /// Accesseur à une zone de la grille (None) si elle n'existe pas
+    #[allow(dead_code)]
     fn get_zone(&mut self, c_zone: char) -> Option<&mut Zone> {
         self.hashmap_zones.get_mut(&c_zone)
     }
 
     /// Accesseur à une case de la grille (créée si elle n'existe pas)
-    fn get_or_create_cell(&mut self, line_column: (u8, u8)) -> &mut Cell {
+    fn get_or_create_cell(&mut self, line_column: &LineColumn) -> &mut Cell {
         self.hashmap_cells
-            .entry(line_column)
+            .entry(line_column.clone())
             .or_insert_with(Cell::default)
     }
 
-    /// Assesseur à une case de la grille (None) si elle n'existe pas
-    fn get_cell(&mut self, line_column: (u8, u8)) -> Option<&mut Cell> {
-        self.hashmap_cells.get_mut(&line_column)
+    /// Accesseur à une case de la grille (None) si elle n'existe pas
+    fn get_cell(&mut self, line_column: &LineColumn) -> Option<&mut Cell> {
+        self.hashmap_cells.get_mut(line_column)
     }
 }
 
@@ -105,32 +122,42 @@ mod test {
         // Grille vierge
         let mut grid = Grid::default();
 
-        // Grille vierge ne connaît pas la zone 'a' ni la case en (1, 2)
-        assert!(grid.get_zone('a').is_none());
-        assert!(grid.get_cell((1, 2)).is_none());
+        // Ligne/Colonne de la case placée
+        let line_column: (u8, u8) = (1, 2);
+        let c_zone = 'a';
+        let content = Some(1);
 
-        // Ajoute la case (1, 2) qui contient la valeur 1 dans la zone 'a'
-        grid.add_cell((1, 2), 'a', Some(1));
+        // Struct pour les positions ligne/colonne
+        let struct_line_column = LineColumn::new(line_column.0, line_column.1);
+
+        // Grille vierge ne connaît pas la zone ni la case
+        assert!(grid.get_zone(c_zone).is_none());
+        assert!(grid.get_cell(&struct_line_column).is_none());
+
+        // Ajoute la case qui contient la valeur dans la zone
+        grid.add_cell(line_column, c_zone, content);
 
         // Vérifie les dimensions de la grille en cours de construction
-        assert_eq!(grid.max_nb_line, 1);
-        assert_eq!(grid.max_nb_column, 2);
+        assert_eq!(grid.max_nb_line, line_column.0);
+        assert_eq!(grid.max_nb_column, line_column.1);
 
-        // Vérifie que la zone 'a' est maintenant connue
-        assert!(grid.hashmap_zones.contains_key(&'a'));
-        assert!(grid.get_zone('a').is_some());
+        // Vérifie que la zone est maintenant connue
+        assert!(grid.hashmap_zones.contains_key(&c_zone));
+        assert!(grid.get_zone(c_zone).is_some());
 
-        // Vérifie que la case en (1, 2) est maintenant connue
-        assert!(grid.hashmap_cells.contains_key(&(1, 2)));
-        assert!(grid.get_cell((1, 2)).is_some());
+        // Vérifie que la case placée est maintenant connue
+        assert!(grid.hashmap_cells.contains_key(&struct_line_column));
+        assert!(grid.get_cell(&struct_line_column).is_some());
 
-        // Vérifie que la case (1, 2) est bien référencée dans la zone 'a'
-        let zone = grid.get_zone('a').unwrap();
-        assert!(zone.vec_line_column.contains(&(1, 2)));
+        // Vérifie que la case est bien référencée dans la zone
+        let zone = grid.get_zone(c_zone).unwrap();
+        assert_eq!(zone.c_zone, c_zone);
+        assert!(zone.vec_line_column.contains(&struct_line_column));
 
-        // Vérifie que la case (1, 2) est correctement définie
-        let cell = grid.get_cell((1, 2)).unwrap();
-        assert_eq!(cell.c_zone, 'a');
-        assert_eq!(cell.content, Some(1));
+        // Vérifie que la case est correctement définie
+        let cell = grid.get_cell(&struct_line_column).unwrap();
+        assert_eq!(cell.c_zone, c_zone);
+        assert_eq!(cell.line_column, struct_line_column);
+        assert_eq!(cell.content, content);
     }
 }
