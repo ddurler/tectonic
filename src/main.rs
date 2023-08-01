@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use tectonic::{Grid, Solver};
 
 pub fn main() {
@@ -18,6 +20,20 @@ pub fn main() {
     // println!();
     // println!("{grid}");
 
-    let solver = Solver::new(&grid);
+    // Autre façon de définir la grille
+    let grid = Grid::from_str(
+        "
+    a1 b  b2
+    b4 b  b
+    c  c  c2
+    ",
+    )
+    .unwrap();
+
+    println!("{grid}");
+
+    let mut solver = Solver::new(&grid);
     println!("{solver}");
+
+    let _ = solver.solve();
 }

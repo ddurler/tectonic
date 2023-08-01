@@ -128,7 +128,7 @@ mod test {
 
             // assert_eq!(neighboring_cells_found, test.1) ?
             for v in test.1 {
-                assert!(neighboring_cells_found.contains(&v))
+                assert!(neighboring_cells_found.contains(&v));
             }
         }
     }

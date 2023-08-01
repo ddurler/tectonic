@@ -1,20 +1,22 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::error::Error;
 use std::fmt;
+use std::str::FromStr;
 
 use crate::line_column::LineColumn;
 // use crate::neighboring_line_columns::NeighboringLineColumns;
 
 /// Information pour une zone de la grille tectonic
 #[derive(Clone, Debug, Default)]
-struct Zone {
-    c_zone: char,
-    set_line_column: HashSet<LineColumn>,
+pub struct Zone {
+    pub c_zone: char,
+    pub set_line_column: HashSet<LineColumn>,
 }
 
 /// Contenu d'une case
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-enum CellContent {
+pub enum CellContent {
     // Case avec un contenu non défini (construction initiale)
     #[default]
     Undefined,
@@ -28,26 +30,26 @@ enum CellContent {
 
 /// Information pour une case de la grille tectonic
 #[derive(Clone, Debug, Default)]
-struct Cell {
-    c_zone: char,
-    line_column: LineColumn,
-    content: CellContent,
+pub struct Cell {
+    pub c_zone: char,
+    pub line_column: LineColumn,
+    pub content: CellContent,
 }
 
 /// Représentation d'une grille tectonic
 #[derive(Clone, Debug, Default)]
 pub struct Grid {
     // Numéro de ligne/column min et max.
-    min_line_column: LineColumn,
-    max_line_column: LineColumn,
+    pub min_line_column: LineColumn,
+    pub max_line_column: LineColumn,
 
     // HashMap des différentes zones de la grille
     // La clef est la lettre utilisée lors de la construction pour désigner une zone
-    hashmap_zones: HashMap<char, Zone>,
+    pub hashmap_zones: HashMap<char, Zone>,
 
     // HashMap des différentes cases de la grille
     // La clef est la ligne_colonne de la case dans la grille
-    hashmap_cells: HashMap<LineColumn, Cell>,
+    pub hashmap_cells: HashMap<LineColumn, Cell>,
 }
 
 impl fmt::Display for Grid {
@@ -125,6 +127,7 @@ impl Grid {
     }
 
     /// Accesseur à une zone de la grille (créée si elle n'existe pas)
+    #[must_use]
     fn get_or_create_zone(&mut self, c_zone: char) -> &mut Zone {
         self.hashmap_zones
             .entry(c_zone)
@@ -132,12 +135,13 @@ impl Grid {
     }
 
     /// Accesseur à une zone de la grille (None) si elle n'existe pas
-    #[allow(dead_code)]
-    fn get_zone(&mut self, c_zone: char) -> Option<&mut Zone> {
+    #[must_use]
+    pub fn get_zone(&mut self, c_zone: char) -> Option<&mut Zone> {
         self.hashmap_zones.get_mut(&c_zone)
     }
 
     /// Accesseur à une case de la grille (créée si elle n'existe pas)
+    #[must_use]
     fn get_or_create_cell(&mut self, line_column: LineColumn) -> &mut Cell {
         self.hashmap_cells
             .entry(line_column)
@@ -145,15 +149,82 @@ impl Grid {
     }
 
     /// Accesseur à une case non mutable de la grille (None) si elle n'existe pas
-    #[allow(dead_code)]
-    fn get_cell(&self, line_column: LineColumn) -> Option<&Cell> {
+    #[must_use]
+    pub fn get_cell(&self, line_column: LineColumn) -> Option<&Cell> {
         self.hashmap_cells.get(&line_column)
     }
 
     /// Accesseur à une case mutable de la grille (None) si elle n'existe pas
-    #[allow(dead_code)]
-    fn get_mut_cell(&mut self, line_column: LineColumn) -> Option<&mut Cell> {
+    #[must_use]
+    pub fn get_mut_cell(&mut self, line_column: LineColumn) -> Option<&mut Cell> {
         self.hashmap_cells.get_mut(&line_column)
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseGridError(i32, i32);
+
+impl fmt::Display for ParseGridError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Grid parsing error on line={}, column={}",
+            self.0, self.1
+        )
+    }
+}
+
+impl Error for ParseGridError {}
+
+impl FromStr for Grid {
+    type Err = ParseGridError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut grid = Grid::default();
+
+        // Numéro de ligne initialement
+        let mut line = -1;
+
+        for str_line in s.lines() {
+            let str_line = str_line.trim();
+            if !str_line.is_empty() {
+                line += 1;
+
+                // Numéro de colonne initialement
+                let mut column = -1;
+
+                for str_cell in str_line.split(' ') {
+                    let vec_char: Vec<char> = str_cell.chars().collect();
+                    if vec_char.is_empty() {
+                        // Espace entre les espaces...
+                        continue;
+                    }
+                    if vec_char.len() == 1 {
+                        // Ne contient qu'un caractère pour la zone et pas de chiffre
+                        column += 1;
+                        let c_zone = vec_char[0];
+                        grid.add_cell((line, column), c_zone, None);
+                    } else if vec_char.len() == 2 {
+                        // Contient un caractère pour la zone et un chiffre
+                        column += 1;
+                        let c_zone = vec_char[0];
+                        let option_n = vec_char[1].to_digit(10);
+                        match option_n {
+                            None => return Err(ParseGridError(line, column)),
+                            Some(n) => {
+                                let n = u8::try_from(n).unwrap();
+                                grid.add_cell((line, column), c_zone, Some(n));
+                            }
+                        }
+                    } else {
+                        // Définition incorrecte d'une case
+                        return Err(ParseGridError(line, column));
+                    }
+                }
+            }
+        }
+
+        Ok(grid)
     }
 }
 
@@ -205,5 +276,18 @@ mod test {
         assert_eq!(cell.c_zone, c_zone);
         assert_eq!(cell.line_column, struct_line_column);
         assert_eq!(cell.content, CellContent::Number(content_number));
+    }
+
+    #[test]
+    fn test_parse_grid() {
+        let result_grid = Grid::from_str(
+            "
+        a1 b  b2
+        b4 b  b
+        c  c  c2
+        ",
+        );
+
+        assert!(result_grid.is_ok());
     }
 }
