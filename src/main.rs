@@ -15,4 +15,6 @@ pub fn main() {
     grid.add_line(2, vec![('c', None), ('c', None), ('c', Some(2))]);
 
     println!("Grid = {grid:?}");
+    println!();
+    println!("{grid}");
 }

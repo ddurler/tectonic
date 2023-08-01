@@ -1,18 +1,20 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::fmt;
 
 use crate::line_column::LineColumn;
 // use crate::neighboring_line_columns::NeighboringLineColumns;
 
 /// Information pour une zone de la grille tectonic
 #[derive(Debug, Default)]
-pub struct Zone {
+struct Zone {
     c_zone: char,
-    vec_line_column: Vec<LineColumn>,
+    set_line_column: HashSet<LineColumn>,
 }
 
 /// Information pour une case de la grille tectonic
 #[derive(Debug, Default)]
-pub struct Cell {
+struct Cell {
     c_zone: char,
     line_column: LineColumn,
     content: Option<u8>,
@@ -34,23 +36,47 @@ pub struct Grid {
     hashmap_cells: HashMap<LineColumn, Cell>,
 }
 
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut res = String::new();
+        // La première ligne contient les numéros de colonnes
+        res.push_str("  ");
+        for column in self.min_line_column.column..=self.max_line_column.column {
+            res.push_str(&format!(" {column:2}"));
+        }
+        res.push('\n');
+        // Contenu de la grille
+        for line in self.min_line_column.line..=self.max_line_column.line {
+            res.push_str(&format!("{line:2} ")); // Numéro de ligne à gauche
+            for column in self.min_line_column.column..=self.max_line_column.column {
+                let line_column = LineColumn::new(line, column);
+                let option_cell = self.get_cell(line_column);
+                let str_cell = match option_cell {
+                    None => String::new(),
+                    Some(cell) => {
+                        let zone = cell.c_zone;
+                        match cell.content {
+                            None => format!("{zone}"),
+                            Some(n) => format!("{zone}{n}"),
+                        }
+                    }
+                };
+                res.push_str(&format!("{str_cell:3}"));
+            }
+            res.push('\n');
+        }
+
+        write!(f, "{res}")
+    }
+}
+
 impl Grid {
     /// Ajoute le contenu d'une case dans la grille tectonic en précisant
     /// `tuple_line_column` Coordonnées dans la grille où (0, 0) pourrait être le coin supérieur gauche
     /// `c_zone` représente une zone de la grille par une lettre
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
-    /// # Panics
-    /// Cette fonction panic! si la case (`line`, `column`) est déjà définie
     pub fn add_cell(&mut self, tuple_line_column: (i32, i32), c_zone: char, content: Option<u8>) {
         let line_column = LineColumn::new(tuple_line_column.0, tuple_line_column.1);
-
-        // Case déjà définie ?
-        assert!(
-            self.get_cell(line_column).is_none(),
-            "La case ligne={} colonne={} est définie plusieurs fois",
-            line_column.line,
-            line_column.column
-        );
 
         // Record min & max line/column
         self.min_line_column.min(line_column);
@@ -58,7 +84,7 @@ impl Grid {
 
         let zone = self.get_or_create_zone(c_zone);
         zone.c_zone = c_zone;
-        zone.vec_line_column.push(line_column);
+        zone.set_line_column.insert(line_column);
 
         let cell = self.get_or_create_cell(line_column);
         cell.c_zone = c_zone;
@@ -72,7 +98,7 @@ impl Grid {
     /// `c_zone` représente une zone de la grille par une lettre
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     /// # Panics
-    /// Cette fonction panics si une des cases de la ligne est déjà définie
+    /// Cette fonction panics si le nombre de colonnes est excessif
     pub fn add_line(&mut self, line: i32, cells: Vec<(char, Option<u8>)>) {
         for (column, (c_zone, content)) in cells.into_iter().enumerate() {
             let column = i32::try_from(column).unwrap();
@@ -100,8 +126,15 @@ impl Grid {
             .or_insert_with(Cell::default)
     }
 
-    /// Accesseur à une case de la grille (None) si elle n'existe pas
-    fn get_cell(&mut self, line_column: LineColumn) -> Option<&mut Cell> {
+    /// Accesseur à une case non mutable de la grille (None) si elle n'existe pas
+    #[allow(dead_code)]
+    fn get_cell(&self, line_column: LineColumn) -> Option<&Cell> {
+        self.hashmap_cells.get(&line_column)
+    }
+
+    /// Accesseur à une case mutable de la grille (None) si elle n'existe pas
+    #[allow(dead_code)]
+    fn get_mut_cell(&mut self, line_column: LineColumn) -> Option<&mut Cell> {
         self.hashmap_cells.get_mut(&line_column)
     }
 }
@@ -147,7 +180,7 @@ mod test {
         // Vérifie que la case est bien référencée dans la zone
         let zone = grid.get_zone(c_zone).unwrap();
         assert_eq!(zone.c_zone, c_zone);
-        assert!(zone.vec_line_column.contains(&struct_line_column));
+        assert!(zone.set_line_column.contains(&struct_line_column));
 
         // Vérifie que la case est correctement définie
         let cell = grid.get_cell(struct_line_column).unwrap();
