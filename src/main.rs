@@ -1,4 +1,4 @@
-use tectonic::Grid;
+use tectonic::{Grid, Solver};
 
 pub fn main() {
     let mut grid = Grid::default();
@@ -14,7 +14,10 @@ pub fn main() {
     grid.add_line(1, vec![('b', Some(4)), ('b', None), ('b', None)]);
     grid.add_line(2, vec![('c', None), ('c', None), ('c', Some(2))]);
 
-    println!("Grid = {grid:?}");
-    println!();
-    println!("{grid}");
+    // println!("Grid = {grid:?}");
+    // println!();
+    // println!("{grid}");
+
+    let solver = Solver::new(&grid);
+    println!("{solver}");
 }

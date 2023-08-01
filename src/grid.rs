@@ -6,22 +6,36 @@ use crate::line_column::LineColumn;
 // use crate::neighboring_line_columns::NeighboringLineColumns;
 
 /// Information pour une zone de la grille tectonic
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct Zone {
     c_zone: char,
     set_line_column: HashSet<LineColumn>,
 }
 
+/// Contenu d'une case
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+enum CellContent {
+    // Case avec un contenu non défini (construction initiale)
+    #[default]
+    Undefined,
+
+    // Case avec un chiffre
+    Number(u8),
+
+    // Case avec une liste de chiffres possibles
+    PossibleNumber(HashSet<u8>),
+}
+
 /// Information pour une case de la grille tectonic
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct Cell {
     c_zone: char,
     line_column: LineColumn,
-    content: Option<u8>,
+    content: CellContent,
 }
 
 /// Représentation d'une grille tectonic
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Grid {
     // Numéro de ligne/column min et max.
     min_line_column: LineColumn,
@@ -56,8 +70,9 @@ impl fmt::Display for Grid {
                     Some(cell) => {
                         let zone = cell.c_zone;
                         match cell.content {
-                            None => format!("{zone}"),
-                            Some(n) => format!("{zone}{n}"),
+                            CellContent::Undefined => format!("{zone}"),
+                            CellContent::Number(n) => format!("{zone}{n}"),
+                            CellContent::PossibleNumber(_) => format!("{zone}?"),
                         }
                     }
                 };
@@ -89,7 +104,10 @@ impl Grid {
         let cell = self.get_or_create_cell(line_column);
         cell.c_zone = c_zone;
         cell.line_column = line_column;
-        cell.content = content;
+        cell.content = match content {
+            None => CellContent::Undefined,
+            Some(n) => CellContent::Number(n),
+        };
     }
 
     /// Ajoute une ligne (à partir de la colonne 0) dans la grille tectonic en précisant
@@ -149,10 +167,10 @@ mod test {
         // Grille vierge
         let mut grid = Grid::default();
 
-        // Ligne/Colonne de la case placée
+        // Ligne/Colonne/Zone/Number de la case placée
         let line_column = (1, 2);
         let c_zone = 'a';
-        let content = Some(1);
+        let content_number = 1;
 
         // Struct pour les positions ligne/colonne
         let struct_line_column = LineColumn::new(line_column.0, line_column.1);
@@ -162,7 +180,7 @@ mod test {
         assert!(grid.get_cell(struct_line_column).is_none());
 
         // Ajoute la case qui contient la valeur dans la zone
-        grid.add_cell(line_column, c_zone, content);
+        grid.add_cell(line_column, c_zone, Some(content_number));
 
         // Vérifie les dimensions de la grille en cours de construction
         // grid.min_line_column reste à (0,0)
@@ -186,6 +204,6 @@ mod test {
         let cell = grid.get_cell(struct_line_column).unwrap();
         assert_eq!(cell.c_zone, c_zone);
         assert_eq!(cell.line_column, struct_line_column);
-        assert_eq!(cell.content, content);
+        assert_eq!(cell.content, CellContent::Number(content_number));
     }
 }
