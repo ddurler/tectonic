@@ -161,6 +161,7 @@ impl Grid {
     }
 }
 
+/// Erreur rencontrée lors du parsing d'une grille avec `FromStr`
 #[derive(Debug)]
 pub struct ParseGridError(i32, i32);
 
@@ -199,14 +200,15 @@ impl FromStr for Grid {
                         // Espace entre les espaces...
                         continue;
                     }
+
+                    column += 1;
+
                     if vec_char.len() == 1 {
                         // Ne contient qu'un caractère pour la zone et pas de chiffre
-                        column += 1;
                         let c_zone = vec_char[0];
                         grid.add_cell((line, column), c_zone, None);
                     } else if vec_char.len() == 2 {
                         // Contient un caractère pour la zone et un chiffre
-                        column += 1;
                         let c_zone = vec_char[0];
                         let option_n = vec_char[1].to_digit(10);
                         match option_n {
@@ -279,7 +281,7 @@ mod test {
     }
 
     #[test]
-    fn test_parse_grid() {
+    fn test_parse_grid_ok() {
         let result_grid = Grid::from_str(
             "
         a1 b  b2
@@ -289,5 +291,45 @@ mod test {
         );
 
         assert!(result_grid.is_ok());
+    }
+
+    #[test]
+    fn test_parse_grid_nok() {
+        // NOK car une case b22 avec syntaxe incorrecte (line=1, column=1)
+        let result_grid = Grid::from_str(
+            "
+        a1 b  b2
+        b4 b22 b
+        c  c  c2
+        ",
+        );
+
+        assert!(result_grid.is_err());
+        if let Err(ParseGridError(line, column)) = result_grid {
+            assert_eq!(line, 1);
+            assert_eq!(column, 1);
+        } else {
+            panic!("ParseGridError non détectée");
+        }
+    }
+
+    #[test]
+    fn test_parse_grid_nok_2() {
+        // NOK car une case bz avec syntaxe incorrecte (line=1, column=1)
+        let result_grid = Grid::from_str(
+            "
+        a1 b  b2
+        b4 bz b
+        c  c  c2
+        ",
+        );
+
+        assert!(result_grid.is_err());
+        if let Err(ParseGridError(line, column)) = result_grid {
+            assert_eq!(line, 1);
+            assert_eq!(column, 1);
+        } else {
+            panic!("ParseGridError non détectée");
+        }
     }
 }

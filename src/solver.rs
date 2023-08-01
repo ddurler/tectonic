@@ -4,7 +4,7 @@ use crate::grid::{CellContent, Grid};
 use crate::line_column::LineColumn;
 use crate::neighboring_line_columns::NeighboringLineColumns;
 
-/// Cas d'erreurs possibles pendant la résolution
+/// Cas d'erreurs possibles pendant la résolution de la grille tectonic
 #[derive(Debug)]
 pub enum SolvingError {
     NeighboringWithSameNumber(LineColumn, LineColumn, u8),
@@ -33,9 +33,18 @@ impl fmt::Display for SolvingError {
 
 impl std::error::Error for SolvingError {}
 
+/// Étapes de la résolution d'une grille tectonic
+#[derive(Debug, Default)]
+enum SolvingStep {
+    // Solver qui vient d'être créé
+    #[default]
+    Newer,
+}
+/// Structure pour la résolution d'une grille tectonic
+#[derive(Debug, Default)]
 pub struct Solver {
     grid: Grid,
-    _solver_step: u32,
+    _solving_step: SolvingStep,
 }
 
 impl fmt::Display for Solver {
@@ -49,7 +58,7 @@ impl Solver {
     pub fn new(grid: &Grid) -> Self {
         Solver {
             grid: grid.clone(),
-            _solver_step: 0,
+            _solving_step: SolvingStep::Newer,
         }
     }
 
@@ -143,7 +152,8 @@ mod test {
         b4 b  b
         c  c  c2
         ",
-        ).unwrap();
+        )
+        .unwrap();
 
         let solver = Solver::new(&grid);
 
@@ -159,7 +169,8 @@ mod test {
         b4 b1 b
         c  c  c2
         ",
-        ).unwrap();
+        )
+        .unwrap();
 
         let solver = Solver::new(&grid);
 
@@ -175,7 +186,8 @@ mod test {
         b4 b2 b
         c  c  c2
         ",
-        ).unwrap();
+        )
+        .unwrap();
 
         let solver = Solver::new(&grid);
 
