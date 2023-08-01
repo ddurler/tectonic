@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 /// Position (ligne, colonne) d'une case
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-struct LineColumn(u8, u8);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+struct LineColumn(isize, isize);
 
 impl LineColumn {
-    fn new(line: u8, column: u8) -> Self {
+    fn new(line: isize, column: isize) -> Self {
         LineColumn(line, column)
     }
 }
@@ -13,7 +13,6 @@ impl LineColumn {
 /// Positions voisines d'une case
 #[derive(Debug)]
 struct NeighboringLineColumns {
-    // On utilise ici le type 'isize' pour les calculs pour éviter les débordements avec des 'u8'
     line_column: (isize, isize),
     yield_directions: Vec<(isize, isize)>,
     max_line_column: (isize, isize),
@@ -21,11 +20,11 @@ struct NeighboringLineColumns {
 
 impl NeighboringLineColumns {
     #[allow(dead_code)]
-    pub fn new(line_column: LineColumn, max_line_column: (u8, u8)) -> Self {
+    pub fn new(line_column: &LineColumn, max_line_column: (isize, isize)) -> Self {
         NeighboringLineColumns {
-            line_column: (line_column.0 as isize, line_column.1 as isize),
+            line_column: (line_column.0, line_column.1),
             yield_directions: Vec::new(),
-            max_line_column: (max_line_column.0 as isize, max_line_column.1 as isize),
+            max_line_column: (max_line_column.0, max_line_column.1),
         }
     }
 }
@@ -35,7 +34,7 @@ impl Iterator for NeighboringLineColumns {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Toutes les directions possibles autour de la case
-        let directions: Vec<(isize, isize)> = vec![
+        let directions = vec![
             (-1, 0),
             (-1, 1),
             (0, 1),
@@ -57,13 +56,11 @@ impl Iterator for NeighboringLineColumns {
                     && neighboring_line <= self.max_line_column.0
                     && neighboring_line <= 255
                 {
-                    let neighboring_line = u8::try_from(neighboring_line).unwrap();
                     let neighboring_column = self.line_column.1 + direction.1;
                     if neighboring_column >= 0
                         && neighboring_column <= self.max_line_column.1
                         && neighboring_column <= 255
                     {
-                        let neighboring_column = u8::try_from(neighboring_column).unwrap();
                         // Case possible, on retourne cette case
                         return Some(LineColumn(neighboring_line, neighboring_column));
                     }
@@ -95,8 +92,8 @@ pub struct Cell {
 #[derive(Debug, Default)]
 pub struct Grid {
     // Numéro de ligne/column max.
-    max_nb_line: u8,
-    max_nb_column: u8,
+    max_nb_line: isize,
+    max_nb_column: isize,
 
     // HashMap des différentes zones de la grille
     // La clef est la lettre utilisée lors de la construction pour désigner une zone
@@ -109,28 +106,33 @@ pub struct Grid {
 
 impl Grid {
     /// Ajoute le contenu d'une case dans la grille tectonic en précisant
-    /// `tuple_line_column` Coordonnées (u8, u8) dans la grille où (0, 0) est le coin supérieur gauche
+    /// `tuple_line_column` Coordonnées dans la grille où (0, 0) est le coin supérieur gauche
     /// `c_zone` représente une zone de la grille par une lettre
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     /// # Panics
     /// Cette fonction panic! si la case (`line`, `column`) est déjà définie
-    pub fn add_cell(&mut self, tuple_line_column: (u8, u8), c_zone: char, content: Option<u8>) {
+    pub fn add_cell(
+        &mut self,
+        tuple_line_column: (isize, isize),
+        c_zone: char,
+        content: Option<u8>,
+    ) {
         let line_column = LineColumn::new(tuple_line_column.0, tuple_line_column.1);
 
         // Case déjà définie ?
         assert!(
             self.get_cell(&line_column).is_none(),
             "La case ligne={} colonne={} est définie plusieurs fois",
-            line_column.clone().0,
-            line_column.clone().1
+            line_column.0,
+            line_column.1
         );
 
-        self.max_nb_line = u8::max(self.max_nb_line, line_column.clone().0);
-        self.max_nb_column = u8::max(self.max_nb_column, line_column.clone().1);
+        self.max_nb_line = isize::max(self.max_nb_line, line_column.0);
+        self.max_nb_column = isize::max(self.max_nb_column, line_column.1);
 
         let zone = self.get_or_create_zone(c_zone);
         zone.c_zone = c_zone;
-        zone.vec_line_column.push(line_column.clone());
+        zone.vec_line_column.push(line_column);
 
         let cell = self.get_or_create_cell(&line_column);
         cell.c_zone = c_zone;
@@ -145,9 +147,9 @@ impl Grid {
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     /// # Panics
     /// Cette fonction panics si une des cases de la ligne est déjà définie
-    pub fn add_line(&mut self, line: u8, cells: Vec<(char, Option<u8>)>) {
+    pub fn add_line(&mut self, line: isize, cells: Vec<(char, Option<u8>)>) {
         for (column, (c_zone, content)) in cells.into_iter().enumerate() {
-            let column = u8::try_from(column).expect("Max 255 cases par ligne");
+            let column = column as isize;
             self.add_cell((line, column), c_zone, content);
         }
     }
@@ -168,7 +170,7 @@ impl Grid {
     /// Accesseur à une case de la grille (créée si elle n'existe pas)
     fn get_or_create_cell(&mut self, line_column: &LineColumn) -> &mut Cell {
         self.hashmap_cells
-            .entry(line_column.clone())
+            .entry(*line_column)
             .or_insert_with(Cell::default)
     }
 
@@ -223,7 +225,7 @@ mod test {
 
         for test in vec_tests {
             // Iterator de toutes les cases voisines
-            let neighboring_cells = NeighboringLineColumns::new(test.0, max_line_column);
+            let neighboring_cells = NeighboringLineColumns::new(&test.0, max_line_column);
             let neighboring_cells_found: Vec<LineColumn> = neighboring_cells.into_iter().collect();
 
             // assert_eq!(neighboring_cells_found, test.1) ?
@@ -239,7 +241,7 @@ mod test {
         let mut grid = Grid::default();
 
         // Ligne/Colonne de la case placée
-        let line_column: (u8, u8) = (1, 2);
+        let line_column = (1, 2);
         let c_zone = 'a';
         let content = Some(1);
 
