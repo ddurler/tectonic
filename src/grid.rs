@@ -2,29 +2,48 @@ use std::collections::HashMap;
 
 /// Position (ligne, colonne) d'une case
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-struct LineColumn(isize, isize);
+struct LineColumn {
+    line: i32,
+    column: i32,
+}
 
 impl LineColumn {
-    fn new(line: isize, column: isize) -> Self {
-        LineColumn(line, column)
+    fn new(line: i32, column: i32) -> Self {
+        LineColumn { line, column }
+    }
+
+    fn min(&mut self, other: LineColumn) {
+        self.line = i32::min(self.line, other.line);
+        self.column = i32::min(self.column, other.column);
+    }
+
+    fn max(&mut self, other: LineColumn) {
+        self.line = i32::max(self.line, other.line);
+        self.column = i32::max(self.column, other.column);
     }
 }
 
 /// Positions voisines d'une case
 #[derive(Debug)]
 struct NeighboringLineColumns {
-    line_column: (isize, isize),
-    yield_directions: Vec<(isize, isize)>,
-    max_line_column: (isize, isize),
+    line_column: LineColumn,
+    min_line_column: LineColumn,
+    max_line_column: LineColumn,
+    yield_directions: Vec<(i32, i32)>,
 }
 
 impl NeighboringLineColumns {
     #[allow(dead_code)]
-    pub fn new(line_column: &LineColumn, max_line_column: (isize, isize)) -> Self {
+    pub fn new(
+        line_column: LineColumn,
+        min_line_column: LineColumn,
+        max_line_column: LineColumn,
+    ) -> Self {
         NeighboringLineColumns {
-            line_column: (line_column.0, line_column.1),
+            line_column,
+            min_line_column,
+            max_line_column,
             yield_directions: Vec::new(),
-            max_line_column: (max_line_column.0, max_line_column.1),
         }
     }
 }
@@ -34,7 +53,7 @@ impl Iterator for NeighboringLineColumns {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Toutes les directions possibles autour de la case
-        let directions = vec![
+        let directions: Vec<(i32, i32)> = vec![
             (-1, 0),
             (-1, 1),
             (0, 1),
@@ -51,18 +70,16 @@ impl Iterator for NeighboringLineColumns {
                 // Direction qui sera maintenant étudiée
                 self.yield_directions.push(direction);
                 // Case existante ?
-                let neighboring_line = self.line_column.0 + direction.0;
-                if neighboring_line >= 0
-                    && neighboring_line <= self.max_line_column.0
-                    && neighboring_line <= 255
+                let neighboring_line = self.line_column.line + direction.0;
+                if neighboring_line >= self.min_line_column.line
+                    && neighboring_line <= self.max_line_column.line
                 {
-                    let neighboring_column = self.line_column.1 + direction.1;
-                    if neighboring_column >= 0
-                        && neighboring_column <= self.max_line_column.1
-                        && neighboring_column <= 255
+                    let neighboring_column = self.line_column.column + direction.1;
+                    if neighboring_column >= self.min_line_column.column
+                        && neighboring_column <= self.max_line_column.column
                     {
                         // Case possible, on retourne cette case
-                        return Some(LineColumn(neighboring_line, neighboring_column));
+                        return Some(LineColumn::new(neighboring_line, neighboring_column));
                     }
                 }
             }
@@ -91,9 +108,9 @@ pub struct Cell {
 /// Représentation d'une grille tectonic
 #[derive(Debug, Default)]
 pub struct Grid {
-    // Numéro de ligne/column max.
-    max_nb_line: isize,
-    max_nb_column: isize,
+    // Numéro de ligne/column min et max.
+    min_line_column: LineColumn,
+    max_line_column: LineColumn,
 
     // HashMap des différentes zones de la grille
     // La clef est la lettre utilisée lors de la construction pour désigner une zone
@@ -106,50 +123,46 @@ pub struct Grid {
 
 impl Grid {
     /// Ajoute le contenu d'une case dans la grille tectonic en précisant
-    /// `tuple_line_column` Coordonnées dans la grille où (0, 0) est le coin supérieur gauche
+    /// `tuple_line_column` Coordonnées dans la grille où (0, 0) pourrait être le coin supérieur gauche
     /// `c_zone` représente une zone de la grille par une lettre
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     /// # Panics
     /// Cette fonction panic! si la case (`line`, `column`) est déjà définie
-    pub fn add_cell(
-        &mut self,
-        tuple_line_column: (isize, isize),
-        c_zone: char,
-        content: Option<u8>,
-    ) {
+    pub fn add_cell(&mut self, tuple_line_column: (i32, i32), c_zone: char, content: Option<u8>) {
         let line_column = LineColumn::new(tuple_line_column.0, tuple_line_column.1);
 
         // Case déjà définie ?
         assert!(
-            self.get_cell(&line_column).is_none(),
+            self.get_cell(line_column).is_none(),
             "La case ligne={} colonne={} est définie plusieurs fois",
-            line_column.0,
-            line_column.1
+            line_column.line,
+            line_column.column
         );
 
-        self.max_nb_line = isize::max(self.max_nb_line, line_column.0);
-        self.max_nb_column = isize::max(self.max_nb_column, line_column.1);
+        // Record min & max line/column
+        self.min_line_column.min(line_column);
+        self.max_line_column.max(line_column);
 
         let zone = self.get_or_create_zone(c_zone);
         zone.c_zone = c_zone;
         zone.vec_line_column.push(line_column);
 
-        let cell = self.get_or_create_cell(&line_column);
+        let cell = self.get_or_create_cell(line_column);
         cell.c_zone = c_zone;
         cell.line_column = line_column;
         cell.content = content;
     }
 
-    /// Ajoute une ligne dans la grille tectonic en précisant
+    /// Ajoute une ligne (à partir de la colonne 0) dans la grille tectonic en précisant
     /// `line` est un numéro de ligne (la 1ere ligne du haut est la ligne 0)
     /// Un tableau de couple (`c_zone`, `content`) où
     /// `c_zone` représente une zone de la grille par une lettre
     /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     /// # Panics
     /// Cette fonction panics si une des cases de la ligne est déjà définie
-    pub fn add_line(&mut self, line: isize, cells: Vec<(char, Option<u8>)>) {
+    pub fn add_line(&mut self, line: i32, cells: Vec<(char, Option<u8>)>) {
         for (column, (c_zone, content)) in cells.into_iter().enumerate() {
-            let column = column as isize;
+            let column = i32::try_from(column).unwrap();
             self.add_cell((line, column), c_zone, content);
         }
     }
@@ -168,15 +181,15 @@ impl Grid {
     }
 
     /// Accesseur à une case de la grille (créée si elle n'existe pas)
-    fn get_or_create_cell(&mut self, line_column: &LineColumn) -> &mut Cell {
+    fn get_or_create_cell(&mut self, line_column: LineColumn) -> &mut Cell {
         self.hashmap_cells
-            .entry(*line_column)
+            .entry(line_column)
             .or_insert_with(Cell::default)
     }
 
     /// Accesseur à une case de la grille (None) si elle n'existe pas
-    fn get_cell(&mut self, line_column: &LineColumn) -> Option<&mut Cell> {
-        self.hashmap_cells.get_mut(line_column)
+    fn get_cell(&mut self, line_column: LineColumn) -> Option<&mut Cell> {
+        self.hashmap_cells.get_mut(&line_column)
     }
 }
 
@@ -186,8 +199,24 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_line_column_min_max() {
+        let mut lc = LineColumn::new(0, 0);
+        assert_eq!(lc.line, 0);
+        assert_eq!(lc.column, 0);
+
+        lc.max(LineColumn::new(2, 3));
+        assert_eq!(lc.line, 2);
+        assert_eq!(lc.column, 3);
+
+        lc.min(LineColumn::new(1, 2));
+        assert_eq!(lc.line, 1);
+        assert_eq!(lc.column, 2);
+    }
+
+    #[test]
     fn test_neighboring_cells() {
-        // La grille est limité à (5, 5)
+        // La grille est limité à (0, 0) - (5, 5)
+        let min_line_column = (0, 0);
         let max_line_column = (5, 5);
 
         // Ce jeu de tests définit la case centrale et la liste des cases voisines dans la grille
@@ -223,9 +252,13 @@ mod test {
             ),
         ];
 
+        let min_line_column = LineColumn::new(min_line_column.0, min_line_column.1);
+        let max_line_column = LineColumn::new(max_line_column.0, max_line_column.1);
+
         for test in vec_tests {
             // Iterator de toutes les cases voisines
-            let neighboring_cells = NeighboringLineColumns::new(&test.0, max_line_column);
+            let neighboring_cells =
+                NeighboringLineColumns::new(test.0, min_line_column, max_line_column);
             let neighboring_cells_found: Vec<LineColumn> = neighboring_cells.into_iter().collect();
 
             // assert_eq!(neighboring_cells_found, test.1) ?
@@ -250,14 +283,15 @@ mod test {
 
         // Grille vierge ne connaît pas la zone ni la case
         assert!(grid.get_zone(c_zone).is_none());
-        assert!(grid.get_cell(&struct_line_column).is_none());
+        assert!(grid.get_cell(struct_line_column).is_none());
 
         // Ajoute la case qui contient la valeur dans la zone
         grid.add_cell(line_column, c_zone, content);
 
         // Vérifie les dimensions de la grille en cours de construction
-        assert_eq!(grid.max_nb_line, line_column.0);
-        assert_eq!(grid.max_nb_column, line_column.1);
+        // grid.min_line_column reste à (0,0)
+        assert_eq!(grid.max_line_column.line, line_column.0);
+        assert_eq!(grid.max_line_column.column, line_column.1);
 
         // Vérifie que la zone est maintenant connue
         assert!(grid.hashmap_zones.contains_key(&c_zone));
@@ -265,7 +299,7 @@ mod test {
 
         // Vérifie que la case placée est maintenant connue
         assert!(grid.hashmap_cells.contains_key(&struct_line_column));
-        assert!(grid.get_cell(&struct_line_column).is_some());
+        assert!(grid.get_cell(struct_line_column).is_some());
 
         // Vérifie que la case est bien référencée dans la zone
         let zone = grid.get_zone(c_zone).unwrap();
@@ -273,7 +307,7 @@ mod test {
         assert!(zone.vec_line_column.contains(&struct_line_column));
 
         // Vérifie que la case est correctement définie
-        let cell = grid.get_cell(&struct_line_column).unwrap();
+        let cell = grid.get_cell(struct_line_column).unwrap();
         assert_eq!(cell.c_zone, c_zone);
         assert_eq!(cell.line_column, struct_line_column);
         assert_eq!(cell.content, content);
