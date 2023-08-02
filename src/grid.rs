@@ -71,10 +71,12 @@ impl fmt::Display for Grid {
                     None => String::new(),
                     Some(cell) => {
                         let zone = cell.c_zone;
-                        match cell.content {
+                        match &cell.content {
                             CellContent::Undefined => format!("{zone}"),
                             CellContent::Number(n) => format!("{zone}{n}"),
-                            CellContent::PossibleNumbers(_) => format!("{zone}?"),
+                            // CellContent::PossibleNumbers(_) => format!("{zone}?"),
+                            CellContent::PossibleNumbers(hash_set) => format!("{zone}{hash_set:?} ", ),
+
                         }
                     }
                 };

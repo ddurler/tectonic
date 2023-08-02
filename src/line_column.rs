@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// Position (ligne, colonne) d'une case
 ///
 /// Implicitement, la première ligne est numérotée 0 et la première colonne est également numérotée 0.
@@ -8,6 +10,12 @@
 pub struct LineColumn {
     pub line: i32,
     pub column: i32,
+}
+
+impl fmt::Display for LineColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       write!(f, "(lin={}, col={})", self.line, self.column)
+    }
 }
 
 impl LineColumn {

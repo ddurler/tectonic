@@ -17,6 +17,8 @@ pub enum SolvingAction {
     /// Case qu'une seule possibilité de chiffre
     SinglePossibleNumber(LineColumn, u8),
 
+    NumbersAlreadyInZone(LineColumn, char, Vec<u8>),
+
     /// Aucune action de résolution trouvée
     NoAction,
 }
@@ -31,7 +33,10 @@ impl fmt::Display for SolvingAction {
                 write!(f, "Initialisation des chiffres possibles dans le cases...")
             }
             Self::SinglePossibleNumber(line_column, n) => {
-                write!(f, "Seule possibilité pour la case {line_column:?}: '{n}")
+                write!(f, "Seule possibilité pour la case {line_column}: '{n}")
+            }
+            Self::NumbersAlreadyInZone(line_column, c_zone, vec_n) => {
+                write!(f, "{vec_n:?} déjà dans la zone '{c_zone}' de la case {line_column}")
             }
             SolvingAction::NoAction => {
                 write!(f, "Aucune action de résolution trouvée")
@@ -159,6 +164,12 @@ impl Solver {
             return Ok(action);
         }
 
+        let action = self.solve_numbers_already_in_zone();
+        if let SolvingAction::NoAction = action {
+        } else {
+            return Ok(action);
+        }
+
         Ok(SolvingAction::NoAction)
     }
 
@@ -167,7 +178,7 @@ impl Solver {
     /// déjà en place dans la zone
     fn solve_step_possible_numbers(&mut self) -> SolvingAction {
         // Prépare la liste des HashSet des chiffres possibles par zone
-        let mut zone_hash_set: HashMap<char, HashSet<u8>> = HashMap::new();
+        let mut zone_hash_map: HashMap<char, HashSet<u8>> = HashMap::new();
         for (c_zone, zone) in &self.grid.hashmap_zones {
             let nb_cases = zone.set_line_column.len();
             let mut hash_set: HashSet<u8> = HashSet::new();
@@ -177,13 +188,13 @@ impl Solver {
                 #[allow(clippy::cast_possible_truncation)]
                 hash_set.insert(n as u8);
             }
-            zone_hash_set.insert(*c_zone, hash_set);
+            zone_hash_map.insert(*c_zone, hash_set);
         }
         // Recherche de toutes les cases avec un contenu 'Undefined'
         for cell in self.grid.hashmap_cells.values_mut() {
             if let CellContent::Undefined = cell.content {
                 // Case à traiter, encore à Undefined...
-                let hash_set = zone_hash_set.get(&cell.c_zone).unwrap();
+                let hash_set = zone_hash_map.get(&cell.c_zone).unwrap();
                 cell.content = CellContent::PossibleNumbers(hash_set.clone());
             }
         }
@@ -201,6 +212,44 @@ impl Solver {
                     let n = vec_n[0];
                     cell.content = CellContent::Number(n);
                     return SolvingAction::SinglePossibleNumber(cell.line_column, n);
+                }
+            }
+        }
+
+        SolvingAction::NoAction
+    }
+
+    /// Etape pour éliminer les chiffres déjà présents dans la zone d'une case
+    fn solve_numbers_already_in_zone(&mut self) -> SolvingAction {
+        // Prépare la liste des HashSet des chiffres déjà placés par zone
+        let mut zone_hash_map: HashMap<char, HashSet<u8>> = HashMap::new();
+        for (c_zone, zone) in &self.grid.hashmap_zones {
+            let mut hash_set: HashSet<u8> = HashSet::new();
+            for line_column in &zone.set_line_column {
+                let cell = self.grid.get_cell(*line_column).unwrap();
+                if let CellContent::Number(n) = cell.content {
+                    hash_set.insert(n);
+                }
+            }
+            zone_hash_map.insert(*c_zone, hash_set);
+        }
+
+        // Recherche de toutes les cases avec un contenu 'PossibleNumbers'
+        for cell in self.grid.hashmap_cells.values_mut() {
+            if let CellContent::PossibleNumbers(cell_hash_set) = cell.content.clone() {
+                let c_zone = cell.c_zone;
+                let zone_hash_set = zone_hash_map.get(&c_zone).unwrap().clone();
+                let intersection_hash_set = &zone_hash_set & &cell_hash_set;
+                if !intersection_hash_set.is_empty() {
+                    // les valeurs dans intersection_hash_set sont déjà affectées à d'autres cases
+                    // de la zone. Elles ne sont pas possible pour cette case
+                    let vec_n = Vec::<_>::from_iter(intersection_hash_set);
+                    let mut cell_hash_set = cell_hash_set.clone();
+                    for n in &vec_n {
+                        cell_hash_set.remove(n);
+                    }
+                    cell.content = CellContent::PossibleNumbers(cell_hash_set);
+                    return SolvingAction::NumbersAlreadyInZone(cell.line_column, c_zone, vec_n);
                 }
             }
         }
