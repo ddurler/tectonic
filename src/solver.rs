@@ -6,13 +6,16 @@ use crate::line_column::LineColumn;
 use crate::neighboring_line_columns::NeighboringLineColumns;
 
 /// Action possible effectuée à chaque étape de résolution
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SolvingAction {
     /// La grille est résolue
     Solved,
 
     /// Initialisation des chiffres possibles pour toutes les cases
     InitPossibleNumbers,
+
+    /// Case qu'une seule possibilité de chiffre
+    SinglePossibleNumber(LineColumn, u8),
 
     /// Aucune action de résolution trouvée
     NoAction,
@@ -26,6 +29,9 @@ impl fmt::Display for SolvingAction {
             }
             Self::InitPossibleNumbers => {
                 write!(f, "Initialisation des chiffres possibles dans le cases...")
+            }
+            Self::SinglePossibleNumber(line_column, n) => {
+                write!(f, "Seule possibilité pour la case {line_column:?}: '{n}")
             }
             SolvingAction::NoAction => {
                 write!(f, "Aucune action de résolution trouvée")
@@ -147,6 +153,12 @@ impl Solver {
             return Ok(SolvingAction::InitPossibleNumbers);
         }
 
+        let action = self.solve_single_possible_number();
+        if let SolvingAction::NoAction = action {
+        } else {
+            return Ok(action);
+        }
+
         Ok(SolvingAction::NoAction)
     }
 
@@ -173,6 +185,23 @@ impl Solver {
                 // Case à traiter, encore à Undefined...
                 let hash_set = zone_hash_set.get(&cell.c_zone).unwrap();
                 cell.content = CellContent::PossibleNumbers(hash_set.clone());
+            }
+        }
+
+        SolvingAction::NoAction
+    }
+
+    /// Etape pour identifier les cases qui n'ont qu'une seule possibilité pour le chiffre
+    fn solve_single_possible_number(&mut self) -> SolvingAction {
+        // Recherche de toutes les cases avec un contenu 'Undefined'
+        for cell in self.grid.hashmap_cells.values_mut() {
+            if let CellContent::PossibleNumbers(hash_set) = cell.content.clone() {
+                if hash_set.len() == 1 {
+                    let vec_n = Vec::<_>::from_iter(hash_set);
+                    let n = vec_n[0];
+                    cell.content = CellContent::Number(n);
+                    return SolvingAction::SinglePossibleNumber(cell.line_column, n);
+                }
             }
         }
 

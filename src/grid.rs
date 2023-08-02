@@ -211,13 +211,16 @@ impl FromStr for Grid {
                         let c_zone = vec_char[0];
                         grid.add_cell((line, column), c_zone, None);
                     } else if vec_char.len() == 2 {
-                        // Contient un caractère pour la zone et un chiffre
+                        // Contient un caractère pour la zone et un chiffre (1..=9)
                         let c_zone = vec_char[0];
                         let option_n = vec_char[1].to_digit(10);
                         match option_n {
                             None => return Err(ParseGridError(line, column)),
                             Some(n) => {
                                 let n = u8::try_from(n).unwrap();
+                                if !(1..=9).contains(&n) {
+                                    return Err(ParseGridError(line, column));
+                                }
                                 grid.add_cell((line, column), c_zone, Some(n));
                             }
                         }
@@ -324,6 +327,26 @@ mod test {
         # NOK car une case bz avec syntaxe incorrecte (line=1, column=1)
         a1 b  b2
         b4 bz b
+        c  c  c2
+        ",
+        );
+
+        assert!(result_grid.is_err());
+        if let Err(ParseGridError(line, column)) = result_grid {
+            assert_eq!(line, 1);
+            assert_eq!(column, 1);
+        } else {
+            panic!("ParseGridError non détectée");
+        }
+    }
+
+    #[test]
+    fn test_parse_grid_nok_3() {
+        let result_grid = Grid::from_str(
+            "
+        # NOK car la case (line=1, column=1) ne peut pas contenir 0
+        a1 b  b2
+        b4 b0 b
         c  c  c2
         ",
         );

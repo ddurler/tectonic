@@ -19,7 +19,7 @@
 //! use std::str::FromStr;
 //! use tectonic::{Grid, Solver};
 //!
-//! // Exemple de création d'une grille
+//! // Exemple de création d'une grille et de résolution
 //! // Les zones sont représentées par les lettres 'a', 'b' et 'c'
 //! // Les cases sont éventuellement renseignées avec un chiffre
 //! // Ici, la zone 'a' ne contient qu'une seule case en haut à gauche
