@@ -19,7 +19,12 @@
 //! use std::str::FromStr;
 //! use tectonic::{Grid, Solver};
 //!
-//! // Création de la grille
+//! // Exemple de création d'une grille
+//! // Les zones sont représentées par les lettres 'a', 'b' et 'c'
+//! // Les cases sont éventuellement renseignées avec un chiffre
+//! // Ici, la zone 'a' ne contient qu'une seule case en haut à gauche
+//! // Et cette case contient déjà le chiffre 1
+//! // Note : Une ligne qui commence par le caractère '#' est ignorée (commentaire)
 //! let grid = Grid::from_str(
 //!     "
 //! a1 b  b2
@@ -42,4 +47,4 @@ mod neighboring_line_columns;
 mod solver;
 
 pub use grid::{Grid, ParseGridError};
-pub use solver::{Solver, SolvingError};
+pub use solver::{Solver, SolvingAction, SolvingError};

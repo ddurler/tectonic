@@ -25,7 +25,7 @@ pub enum CellContent {
     Number(u8),
 
     // Case avec une liste de chiffres possibles
-    PossibleNumber(HashSet<u8>),
+    PossibleNumbers(HashSet<u8>),
 }
 
 /// Information pour une case de la grille tectonic
@@ -74,7 +74,7 @@ impl fmt::Display for Grid {
                         match cell.content {
                             CellContent::Undefined => format!("{zone}"),
                             CellContent::Number(n) => format!("{zone}{n}"),
-                            CellContent::PossibleNumber(_) => format!("{zone}?"),
+                            CellContent::PossibleNumbers(_) => format!("{zone}?"),
                         }
                     }
                 };
@@ -188,6 +188,9 @@ impl FromStr for Grid {
 
         for str_line in s.lines() {
             let str_line = str_line.trim();
+            if str_line.starts_with('#') {
+                continue;
+            }
             if !str_line.is_empty() {
                 line += 1;
 
@@ -284,6 +287,7 @@ mod test {
     fn test_parse_grid_ok() {
         let result_grid = Grid::from_str(
             "
+        # Exemple de grille ok
         a1 b  b2
         b4 b  b
         c  c  c2
@@ -295,9 +299,9 @@ mod test {
 
     #[test]
     fn test_parse_grid_nok() {
-        // NOK car une case b22 avec syntaxe incorrecte (line=1, column=1)
         let result_grid = Grid::from_str(
             "
+        # NOK car une case b22 avec syntaxe incorrecte (line=1, column=1)
         a1 b  b2
         b4 b22 b
         c  c  c2
@@ -315,9 +319,9 @@ mod test {
 
     #[test]
     fn test_parse_grid_nok_2() {
-        // NOK car une case bz avec syntaxe incorrecte (line=1, column=1)
         let result_grid = Grid::from_str(
             "
+        # NOK car une case bz avec syntaxe incorrecte (line=1, column=1)
         a1 b  b2
         b4 bz b
         c  c  c2

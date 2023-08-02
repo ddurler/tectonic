@@ -23,6 +23,7 @@ pub fn main() {
     // Autre façon de définir la grille
     let grid = Grid::from_str(
         "
+    # Test
     a1 b  b2
     b4 b  b
     c  c  c2
@@ -33,7 +34,6 @@ pub fn main() {
     println!("{grid}");
 
     let mut solver = Solver::new(&grid);
-    println!("{solver}");
-
     let _ = solver.solve();
+    println!("{solver}");
 }
