@@ -375,7 +375,7 @@ impl Solver {
         // Parcourt de toutes les zones
         for (c_zone, zone) in &self.grid.hashmap_zones {
             // Init liste des chiffres définit dans la zone
-            let mut vec_numbers = Vec::new();
+            let mut zone_numbers = Simple09Set::default();
             // Parcourt des cases de la zone
             for line_column in &zone.set_line_column {
                 let cell = match self.grid.get_cell(*line_column) {
@@ -384,10 +384,10 @@ impl Solver {
                 };
                 if let CellContent::Number(n) = cell.content {
                     // C'est une erreur si un même chiffre apparaît plusieurs fois dans la même zone
-                    if vec_numbers.contains(&n) {
+                    if zone_numbers.contains(n) {
                         return Err(SolvingError::ZoneWithSameNumber(*c_zone, n));
                     }
-                    vec_numbers.push(n);
+                    zone_numbers.insert(n);
                 }
             }
         }
