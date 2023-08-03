@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 
 use crate::grid::{CellContent, Grid};
 use crate::line_column::LineColumn;
 use crate::neighboring_line_columns::NeighboringLineColumns;
+use crate::simple_09_set::Simple09Set;
 
 /// Action possible effectuée à chaque étape de résolution
 #[derive(Debug, PartialEq, Eq)]
@@ -36,7 +37,10 @@ impl fmt::Display for SolvingAction {
                 write!(f, "Seule possibilité pour la case {line_column}: '{n}")
             }
             Self::NumbersAlreadyInZone(line_column, c_zone, vec_n) => {
-                write!(f, "{vec_n:?} déjà dans la zone '{c_zone}' de la case {line_column}")
+                write!(
+                    f,
+                    "{vec_n:?} déjà dans la zone '{c_zone}' de la case {line_column}"
+                )
             }
             SolvingAction::NoAction => {
                 write!(f, "Aucune action de résolution trouvée")
@@ -177,25 +181,25 @@ impl Solver {
     /// contenu `Undefined` en un contenu `PossibleNumbers` selon les chiffres
     /// déjà en place dans la zone
     fn solve_step_possible_numbers(&mut self) -> SolvingAction {
-        // Prépare la liste des HashSet des chiffres possibles par zone
-        let mut zone_hash_map: HashMap<char, HashSet<u8>> = HashMap::new();
+        // Prépare la liste des des chiffres possibles par zone
+        let mut zone_hash_map: HashMap<char, Simple09Set> = HashMap::new();
         for (c_zone, zone) in &self.grid.hashmap_zones {
             let nb_cases = zone.set_line_column.len();
-            let mut hash_set: HashSet<u8> = HashSet::new();
+            let mut simple_09_set = Simple09Set::default();
             // On ne considère que le nombre de cases de la zone pour la liste
             // des chiffres possibles dans les cases de cette zone
             for n in 1..=nb_cases {
                 #[allow(clippy::cast_possible_truncation)]
-                hash_set.insert(n as u8);
+                simple_09_set.insert(n as u8);
             }
-            zone_hash_map.insert(*c_zone, hash_set);
+            zone_hash_map.insert(*c_zone, simple_09_set);
         }
         // Recherche de toutes les cases avec un contenu 'Undefined'
         for cell in self.grid.hashmap_cells.values_mut() {
             if let CellContent::Undefined = cell.content {
                 // Case à traiter, encore à Undefined...
-                let hash_set = zone_hash_map.get(&cell.c_zone).unwrap();
-                cell.content = CellContent::PossibleNumbers(hash_set.clone());
+                let simple_09_set = zone_hash_map.get(&cell.c_zone).unwrap();
+                cell.content = CellContent::PossibleNumbers(*simple_09_set);
             }
         }
 
@@ -206,9 +210,9 @@ impl Solver {
     fn solve_single_possible_number(&mut self) -> SolvingAction {
         // Recherche de toutes les cases avec un contenu 'Undefined'
         for cell in self.grid.hashmap_cells.values_mut() {
-            if let CellContent::PossibleNumbers(hash_set) = cell.content.clone() {
-                if hash_set.len() == 1 {
-                    let vec_n = Vec::<_>::from_iter(hash_set);
+            if let CellContent::PossibleNumbers(simple_09_set) = cell.content.clone() {
+                if simple_09_set.len() == 1 {
+                    let vec_n = simple_09_set.as_vec_u8();
                     let n = vec_n[0];
                     cell.content = CellContent::Number(n);
                     return SolvingAction::SinglePossibleNumber(cell.line_column, n);
@@ -221,34 +225,34 @@ impl Solver {
 
     /// Etape pour éliminer les chiffres déjà présents dans la zone d'une case
     fn solve_numbers_already_in_zone(&mut self) -> SolvingAction {
-        // Prépare la liste des HashSet des chiffres déjà placés par zone
-        let mut zone_hash_map: HashMap<char, HashSet<u8>> = HashMap::new();
+        // Prépare la liste des chiffres déjà placés par zone
+        let mut zone_hash_map: HashMap<char, Simple09Set> = HashMap::new();
         for (c_zone, zone) in &self.grid.hashmap_zones {
-            let mut hash_set: HashSet<u8> = HashSet::new();
+            let mut simple_09_set = Simple09Set::default();
             for line_column in &zone.set_line_column {
                 let cell = self.grid.get_cell(*line_column).unwrap();
                 if let CellContent::Number(n) = cell.content {
-                    hash_set.insert(n);
+                    simple_09_set.insert(n);
                 }
             }
-            zone_hash_map.insert(*c_zone, hash_set);
+            zone_hash_map.insert(*c_zone, simple_09_set);
         }
 
         // Recherche de toutes les cases avec un contenu 'PossibleNumbers'
         for cell in self.grid.hashmap_cells.values_mut() {
-            if let CellContent::PossibleNumbers(cell_hash_set) = cell.content.clone() {
+            if let CellContent::PossibleNumbers(cell_simple_09_set) = cell.content.clone() {
                 let c_zone = cell.c_zone;
-                let zone_hash_set = zone_hash_map.get(&c_zone).unwrap().clone();
-                let intersection_hash_set = &zone_hash_set & &cell_hash_set;
-                if !intersection_hash_set.is_empty() {
-                    // les valeurs dans intersection_hash_set sont déjà affectées à d'autres cases
+                let mut simple_09_set = *zone_hash_map.get(&c_zone).unwrap();
+                simple_09_set.intersection(cell_simple_09_set);
+                if !simple_09_set.is_empty() {
+                    // les valeurs dans simple_09_set sont déjà affectées à d'autres cases
                     // de la zone. Elles ne sont pas possible pour cette case
-                    let vec_n = Vec::<_>::from_iter(intersection_hash_set);
-                    let mut cell_hash_set = cell_hash_set.clone();
+                    let vec_n = simple_09_set.as_vec_u8();
+                    let mut new_cell_simple_09_set = cell_simple_09_set;
                     for n in &vec_n {
-                        cell_hash_set.remove(n);
+                        new_cell_simple_09_set.remove(*n);
                     }
-                    cell.content = CellContent::PossibleNumbers(cell_hash_set);
+                    cell.content = CellContent::PossibleNumbers(new_cell_simple_09_set);
                     return SolvingAction::NumbersAlreadyInZone(cell.line_column, c_zone, vec_n);
                 }
             }

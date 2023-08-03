@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
 use crate::line_column::LineColumn;
+use crate::simple_09_set::Simple09Set;
 // use crate::neighboring_line_columns::NeighboringLineColumns;
 
 /// Information pour une zone de la grille tectonic
@@ -24,8 +24,8 @@ pub enum CellContent {
     // Case avec un chiffre
     Number(u8),
 
-    // Case avec une liste de chiffres possibles
-    PossibleNumbers(HashSet<u8>),
+    // Case avec un set des chiffres possibles
+    PossibleNumbers(Simple09Set),
 }
 
 /// Information pour une case de la grille tectonic
@@ -75,8 +75,9 @@ impl fmt::Display for Grid {
                             CellContent::Undefined => format!("{zone}"),
                             CellContent::Number(n) => format!("{zone}{n}"),
                             // CellContent::PossibleNumbers(_) => format!("{zone}?"),
-                            CellContent::PossibleNumbers(hash_set) => format!("{zone}{hash_set:?} ", ),
-
+                            CellContent::PossibleNumbers(simple_09_set) => {
+                                format!("{zone}{simple_09_set} ",)
+                            }
                         }
                     }
                 };

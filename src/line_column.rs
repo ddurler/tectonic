@@ -14,7 +14,7 @@ pub struct LineColumn {
 
 impl fmt::Display for LineColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       write!(f, "(lin={}, col={})", self.line, self.column)
+        write!(f, "(lin={}, col={})", self.line, self.column)
     }
 }
 
