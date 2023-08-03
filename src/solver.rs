@@ -18,7 +18,11 @@ pub enum SolvingAction {
     /// Case qu'une seule possibilité de chiffre
     SinglePossibleNumber(LineColumn, u8),
 
-    NumbersAlreadyInZone(LineColumn, char, Vec<u8>),
+    /// Suppression des chiffres d'une case qui sont déjà dans la zone de cette case
+    NumbersInZone(LineColumn, char, Vec<u8>),
+
+    /// Suppression des chiffres d'une case qui sont déjà dans une de ses cases voisines
+    NumbersNeighboring(LineColumn, Vec<u8>),
 
     /// Aucune action de résolution trouvée
     NoAction,
@@ -36,10 +40,16 @@ impl fmt::Display for SolvingAction {
             Self::SinglePossibleNumber(line_column, n) => {
                 write!(f, "Seule possibilité pour la case {line_column}: '{n}")
             }
-            Self::NumbersAlreadyInZone(line_column, c_zone, vec_n) => {
+            Self::NumbersInZone(line_column, c_zone, vec_n) => {
                 write!(
                     f,
                     "{vec_n:?} déjà dans la zone '{c_zone}' de la case {line_column}"
+                )
+            }
+            Self::NumbersNeighboring(line_column, vec_n) => {
+                write!(
+                    f,
+                    "{vec_n:?} déjà dans les cases voisines de la case {line_column}"
                 )
             }
             SolvingAction::NoAction => {
@@ -162,13 +172,21 @@ impl Solver {
             return Ok(SolvingAction::InitPossibleNumbers);
         }
 
+        // Fonctions-actions pour la résolution
+
         let action = self.solve_single_possible_number();
         if let SolvingAction::NoAction = action {
         } else {
             return Ok(action);
         }
 
-        let action = self.solve_numbers_already_in_zone();
+        let action = self.solve_numbers_in_zone();
+        if let SolvingAction::NoAction = action {
+        } else {
+            return Ok(action);
+        }
+
+        let action = self.solve_numbers_neighboring();
         if let SolvingAction::NoAction = action {
         } else {
             return Ok(action);
@@ -224,7 +242,7 @@ impl Solver {
     }
 
     /// Etape pour éliminer les chiffres déjà présents dans la zone d'une case
-    fn solve_numbers_already_in_zone(&mut self) -> SolvingAction {
+    fn solve_numbers_in_zone(&mut self) -> SolvingAction {
         // Prépare la liste des chiffres déjà placés par zone
         let mut zone_hash_map: HashMap<char, Simple09Set> = HashMap::new();
         for (c_zone, zone) in &self.grid.hashmap_zones {
@@ -253,8 +271,57 @@ impl Solver {
                         new_cell_simple_09_set.remove(*n);
                     }
                     cell.content = CellContent::PossibleNumbers(new_cell_simple_09_set);
-                    return SolvingAction::NumbersAlreadyInZone(cell.line_column, c_zone, vec_n);
+                    return SolvingAction::NumbersInZone(cell.line_column, c_zone, vec_n);
                 }
+            }
+        }
+
+        SolvingAction::NoAction
+    }
+
+    /// Etape pour éliminer les chiffres déjà présents dans les cases voisines
+    fn solve_numbers_neighboring(&mut self) -> SolvingAction {
+        // Liste des cases avec un contenu 'PossibleNumbers'
+        let mut vec_line_columns_possible_numbers: Vec<(LineColumn, Simple09Set)> = Vec::new();
+        for cell in self.grid.hashmap_cells.values() {
+            if let CellContent::PossibleNumbers(simple_09_set) = cell.content {
+                vec_line_columns_possible_numbers.push((cell.line_column, simple_09_set));
+            }
+        }
+
+        // Parcourt des cases avec un contenu 'PossibleNumbers'
+        for (cell_line_column, cell_simple_09_set) in vec_line_columns_possible_numbers {
+            // simple_09_set des cases voisines
+            let mut neighboring_simple_09_set = Simple09Set::default();
+            // Parcourt des cases voisines
+            let neighboring_line_columns = NeighboringLineColumns::new(
+                cell_line_column,
+                self.grid.min_line_column,
+                self.grid.max_line_column,
+            );
+            for neighboring_line_column in neighboring_line_columns {
+                let option_cell = self.grid.get_cell(neighboring_line_column);
+                if let Some(neighboring_cell) = option_cell {
+                    if let CellContent::Number(neighboring_n) = neighboring_cell.content {
+                        // Simple_09_set des chiffres dans les cases voisines
+                        neighboring_simple_09_set.insert(neighboring_n);
+                    }
+                }
+            }
+
+            let mut intersection_simple_09set = cell_simple_09_set;
+            intersection_simple_09set.intersection(neighboring_simple_09_set);
+            if !intersection_simple_09set.is_empty() {
+                // les valeurs dans intersection_simple_09set sont déjà affectées à des cases voisines
+                // Elles ne sont pas possible pour cette case en line_column
+                let cell = self.grid.get_mut_cell(cell_line_column).unwrap();
+                let vec_n = intersection_simple_09set.as_vec_u8();
+                let mut new_cell_simple_09_set = cell_simple_09_set;
+                for n in &vec_n {
+                    new_cell_simple_09_set.remove(*n);
+                }
+                cell.content = CellContent::PossibleNumbers(new_cell_simple_09_set);
+                return SolvingAction::NumbersNeighboring(cell.line_column, vec_n);
             }
         }
 
