@@ -91,10 +91,11 @@ impl fmt::Display for Grid {
 }
 
 impl Grid {
-    /// Ajoute le contenu d'une case dans la grille tectonic en précisant
-    /// `tuple_line_column` Coordonnées dans la grille où (0, 0) pourrait être le coin supérieur gauche
-    /// `c_zone` représente une zone de la grille par une lettre
-    /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
+    /// Ajoute le contenu d'une case dans la grille tectonic en précisant :
+    ///
+    /// * `tuple_line_column` Coordonnées dans la grille où (0, 0) pourrait être le coin supérieur gauche
+    /// * `c_zone` représente une zone de la grille par une lettre
+    /// * `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
     pub fn add_cell(&mut self, tuple_line_column: (i32, i32), c_zone: char, content: Option<u8>) {
         let line_column = LineColumn::new(tuple_line_column.0, tuple_line_column.1);
 
@@ -115,11 +116,13 @@ impl Grid {
         };
     }
 
-    /// Ajoute une ligne (à partir de la colonne 0) dans la grille tectonic en précisant
-    /// `line` est un numéro de ligne (la 1ere ligne du haut est la ligne 0)
-    /// Un tableau de couple (`c_zone`, `content`) où
-    /// `c_zone` représente une zone de la grille par une lettre
-    /// `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
+    /// Ajoute une ligne (à partir de la colonne 0) dans la grille tectonic en précisant :
+    ///
+    /// * `line` le numéro de ligne (la 1ere ligne du haut est la ligne 0)
+    /// * Un tableau de couple (`c_zone`, `content`) où
+    ///   * `c_zone` représente une zone de la grille par une lettre
+    ///   * `content` est le contenu de cette case qui peut être vide ou contenir déjà un chiffre
+    ///
     /// # Panics
     /// Cette fonction panics si le nombre de colonnes est excessif
     pub fn add_line(&mut self, line: i32, cells: Vec<(char, Option<u8>)>) {

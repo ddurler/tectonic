@@ -1,4 +1,4 @@
-# Tectonic (r)
+# Tectonic (R)
 
 .__Extrait du journal 'Sport Cérébral__
 
@@ -13,7 +13,7 @@ Il faut compléter une grille avec les chiffres manquants dans chaque zone entou
 
 .__fin de l'extrait__
 
-Représenter des zones entourées de gras étant incommode dans une fichier plat, les zones sont marquées par une lettre.
+Représenter des zones entourées de gras étant incommode dans un fichier plat, les zones sont marquées par une lettre.
 
 Exemple :
 
@@ -25,7 +25,7 @@ c  c  c2
 
 Cette définition représente une grille contenant 3 zones :
 
-* Une zone notée 'a' c'une seule case en haut à gauche avec le chiffre 1 placé.
+* Une zone notée 'a' d'une seule case en haut à gauche avec le chiffre 1 placé.
 * Une zone notée 'b' qui contient déjà les chiffres 2 et 4 placés.
 * Une zone notée 'c' sur la ligne du bas qui contient le chiffre 2 placé.
 

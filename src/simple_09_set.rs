@@ -28,7 +28,7 @@ fn not_digit_mask_bit(digit: u8) -> u16 {
 /// Cette structure permet de gérer un set de chiffres de 0 à 9 (1 digit)
 /// Comme le nombre d'éléments est limité à 10 chiffres, on utilise les
 /// bits d'un u16 pour marquer les éléments du set
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Simple09Set(u16);
 
 impl fmt::Display for Simple09Set {

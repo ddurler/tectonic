@@ -12,7 +12,7 @@
 //! Lors de cette construction, une zone est repérée par une lettre ('a', 'b', etc.), une case est repérée
 //! par une lettre (la zone qui contient cette case) et le chiffre qu'elle contient ou la zone seulement si
 //! le chiffre de la case n'est pas encore connu.
-//! //!
+//!
 //! La structure `Solver` permet de résoudre cette grille
 //!
 //! ```rust

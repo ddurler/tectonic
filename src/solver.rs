@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -15,11 +16,14 @@ pub enum SolvingAction {
     /// Initialisation des chiffres possibles pour toutes les cases
     InitPossibleNumbers,
 
-    /// Case qu'une seule possibilité de chiffre
+    /// Case avec qu'une seule possibilité de chiffre
     SinglePossibleNumber(LineColumn, u8),
 
-    /// Suppression des chiffres d'une case qui sont déjà dans la zone de cette case
+    /// Suppression des chiffres possibles d'une case qui sont déjà dans la zone de cette case
     NumbersInZone(LineColumn, char, Vec<u8>),
+
+    /// Seule case possible pour un chiffre d'une zone
+    OnlyNumberInZone(char, LineColumn, u8),
 
     /// Suppression des chiffres d'une case qui sont déjà dans une de ses cases voisines
     NumbersNeighboring(LineColumn, Vec<u8>),
@@ -38,7 +42,13 @@ impl fmt::Display for SolvingAction {
                 write!(f, "Initialisation des chiffres possibles dans le cases...")
             }
             Self::SinglePossibleNumber(line_column, n) => {
-                write!(f, "Seule possibilité pour la case {line_column}: '{n}")
+                write!(f, "Seule possibilité pour la case {line_column}: '{n}'")
+            }
+            Self::OnlyNumberInZone(c_zone, line_column, n) => {
+                write!(
+                    f,
+                    "Zone '{c_zone}', seule la case {line_column} est possible pour '{n}"
+                )
             }
             Self::NumbersInZone(line_column, c_zone, vec_n) => {
                 write!(
@@ -172,6 +182,11 @@ impl Solver {
             return Ok(SolvingAction::InitPossibleNumbers);
         }
 
+        // Grille résolue ?
+        if self.is_solved() {
+            return Ok(SolvingAction::Solved);
+        }
+
         // Fonctions-actions pour la résolution
 
         let action = self.solve_single_possible_number();
@@ -181,6 +196,12 @@ impl Solver {
         }
 
         let action = self.solve_numbers_in_zone();
+        if let SolvingAction::NoAction = action {
+        } else {
+            return Ok(action);
+        }
+
+        let action = self.solve_only_number_in_zone();
         if let SolvingAction::NoAction = action {
         } else {
             return Ok(action);
@@ -272,6 +293,63 @@ impl Solver {
                     }
                     cell.content = CellContent::PossibleNumbers(new_cell_simple_09_set);
                     return SolvingAction::NumbersInZone(cell.line_column, c_zone, vec_n);
+                }
+            }
+        }
+
+        SolvingAction::NoAction
+    }
+
+    /// Etape pour identifier une seule case possible pour une valeur dans une zone
+    fn solve_only_number_in_zone(&mut self) -> SolvingAction {
+        // Énumération spécifique pour cette recherche
+        enum OnlyNumber {
+            OnlyLineColumn(LineColumn),
+            ManyLineColumns,
+        }
+
+        // Liste des possibilités pour toutes les zones
+        let mut vec_zones_hash_map_only_numbers = Vec::new();
+
+        // Parcourt de toutes les zones
+        for (c_zone, zone) in &self.grid.hashmap_zones {
+            // HashMap pour repérer les possibilités
+            let mut hash_map_only_numbers = HashMap::new();
+
+            // Parcourt des cases de la zone
+            for line_column in &zone.set_line_column {
+                let cell = self.grid.get_cell(*line_column).unwrap();
+                if let CellContent::PossibleNumbers(simple_09_set) = cell.content {
+                    // Case avec plusieurs possibilités de chiffres
+                    // On renseigne le HashMap des possibilités de la zone
+                    let vec_n = simple_09_set.as_vec_u8();
+                    for n in vec_n {
+                        match hash_map_only_numbers.entry(n) {
+                            Entry::Occupied(mut e) => {
+                                // Possibilité déjà vue dans la zone pour ce chiffre
+                                e.insert(OnlyNumber::ManyLineColumns);
+                            }
+                            Entry::Vacant(e) => {
+                                e.insert(OnlyNumber::OnlyLineColumn(*line_column));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Renseigne ce qu'on a trouvé pour cette zone
+            vec_zones_hash_map_only_numbers.push((*c_zone, hash_map_only_numbers));
+        }
+
+        // Parcourt du vecteur de ce qu'on a trouvé pour toutes les zones
+        for (c_zone, hash_map_only_numbers) in vec_zones_hash_map_only_numbers {
+            // Parcourt du hash_map de la zone à la recherche de case qui serait la seule possibilité
+            for (digit, only_number) in hash_map_only_numbers {
+                if let OnlyNumber::OnlyLineColumn(line_column) = only_number {
+                    // Il n'y a qu'une seule case possible pour ce digit dans cette zone
+                    let cell = self.grid.get_mut_cell(line_column).unwrap();
+                    cell.content = CellContent::Number(digit);
+                    return SolvingAction::OnlyNumberInZone(c_zone, line_column, digit);
                 }
             }
         }
@@ -378,10 +456,7 @@ impl Solver {
             let mut zone_numbers = Simple09Set::default();
             // Parcourt des cases de la zone
             for line_column in &zone.set_line_column {
-                let cell = match self.grid.get_cell(*line_column) {
-                    None => return Err(SolvingError::BadImplementation),
-                    Some(cell) => cell,
-                };
+                let cell = self.grid.get_cell(*line_column).unwrap();
                 if let CellContent::Number(n) = cell.content {
                     // C'est une erreur si un même chiffre apparaît plusieurs fois dans la même zone
                     if zone_numbers.contains(n) {
