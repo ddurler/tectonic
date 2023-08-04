@@ -1,39 +1,77 @@
+use std::env;
+use std::fs;
 use std::str::FromStr;
 
 use tectonic::{Grid, Solver};
 
 pub fn main() {
-    let mut grid = Grid::default();
+    // Arguments de la line de commande
+    let args: Vec<String> = env::args().collect();
 
-    // Grille exemple dans le fichier README...
+    if args.len() == 2 {
+        // Un nom de fichier passé en paramètre
+        solve_grid_in_file(&args[1]);
+    } else {
+        // Aide utilisateur
+        help();
+    }
+}
 
-    // 1ere ligne (en utilisant la primitive 'add_cell')
-    grid.add_cell((0, 0), 'a', Some(1));
-    grid.add_cell((0, 1), 'b', None);
-    grid.add_cell((0, 2), 'b', Some(2));
+fn help() {
+    println!("
+Solver de grille 'Tectonic'
 
-    // 2eme et 3eme lignes (en utilisant la primitive 'add_line')
-    grid.add_line(1, vec![('b', Some(4)), ('b', None), ('b', None)]);
-    grid.add_line(2, vec![('c', None), ('c', None), ('c', Some(2))]);
+`Tectonic` est un jeu de logique.
 
-    // println!("Grid = {grid:?}");
-    // println!();
-    // println!("{grid}");
+Il faut compléter une grille avec les chiffres manquants dans chaque zone entourés de gras, sachant que :
 
-    // Autre façon de définir la grille
-    let grid = Grid::from_str(
-        "
-    # Test
-    a1 b  b2
-    b4 b  b
-    c  c  c2
-    ",
-    )
-    .unwrap();
+1. Une zone de deux cases contient les chiffres 1 et 2, une zone de 3 cases les chiffres 1, 2 et 3, etc.
+2. Un chiffre placé dans une case ne peut se retrouver dans aucune des cases qui l'entoure (en diagonale y compris).
 
-    println!("{grid}");
+La grille à résoudre doit être définie dans un fichier au format texte passé en paramètre.
 
+Dans ce fichier, une zone est repérée par une lettre ('a', 'b', etc.) et chaque case est repérée
+par une lettre (la zone qui contient cette case) et le chiffre qu'elle contient ou la zone seulement si
+le chiffre de la case n'est pas encore connu.
+
+Les lignes 'vides' ou qui commencent par un '#' (commentaires) sont ignorées.
+    ");
+
+    println!("Exemple d'utilisation :\n");
+    example();
+}
+
+// Exemple d'utilisation
+fn example() {
+    let file_content = "
+# Exemple
+a1 b  b2
+b4 b  b
+c  c  c2
+";
+
+    println!("Le fichier de définition de la grille contient le texte suivant :");
+    println!("{file_content}");
+
+    println!("La résolution de cette grille est alors :\n");
+    let grid = Grid::from_str(file_content).unwrap();
     let mut solver = Solver::new(&grid);
-    let _ = solver.solve();
+    let _ = solver.solve(|action| println!("{action}"));
     println!("{solver}");
+}
+
+// Résolution d'une grille définie dans un fichier
+fn solve_grid_in_file(path: &str) {
+    println!("Lecture de '{path}'...");
+    match fs::read_to_string(path) {
+        Err(e) => println!("Erreur de lecture du fichier '{path}': {e}"),
+        Ok(file_content) => match Grid::from_str(&file_content) {
+            Err(e) => println!("Erreur dans le fichier '{path}: {e}"),
+            Ok(grid) => {
+                let mut solver = Solver::new(&grid);
+                let _ = solver.solve(|action| println!("{action}"));
+                println!("{solver}");
+            }
+        },
+    }
 }
