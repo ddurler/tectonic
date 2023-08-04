@@ -1,0 +1,6 @@
+ # Jeu Le Routard no 13 - page 38 (niveau orange)
+a  a  a4 b  b  c  c4 d
+a  a  b  b5 c  c  d  d5
+e  e  e  b  f  c  d  d
+g  g  g  h  h  h  i3 i
+g  g4 h  h5 j  i2 i  i

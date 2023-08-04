@@ -1,0 +1,12 @@
+ # Jeu Le Routard no 13 - page 38 (niveau rouge)
+a  a3 b  b  c  c
+a  a  a  b  b  b4
+d3 d  e  e  e3 e
+d  d  e  f1 f  g
+h  d  f  f  f  g
+h  h  h  i4 i  g
+h  j  j  i  i  i3
+j1 j  k4 k  l  l
+j  m  k  k  k3 l
+m2 m  n2 n  n  l2
+m  m  o  n  n  l
