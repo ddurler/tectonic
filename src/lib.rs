@@ -9,7 +9,7 @@
 //!
 //! La structure `Grid` permet de construire la grille.
 //!
-//! Lors de cette construction, une zone est repérée par une lettre ('a', 'b', etc.), une case est repérée
+//! Lors de cette construction, une zone est repérée par une lettre ('a', 'b', etc.), et chaque case est repérée
 //! par une lettre (la zone qui contient cette case) et le chiffre qu'elle contient ou la zone seulement si
 //! le chiffre de la case n'est pas encore connu.
 //!
@@ -38,7 +38,7 @@
 //!
 //! // Résolution de la grille
 //! let mut solver = Solver::new(&grid);
-//! let _ = solver.solve();
+//! let _ = solver.solve(|action| println!("{action}"));
 //! println!("{solver}");
 //! ```
 mod grid;

@@ -149,13 +149,15 @@ impl Solver {
 
     /// Tente de résoudre a grille en itérant continûment sur toutes les étapes de résolution
     /// Retourne true si la grille est résolue
+    /// La fonction de callback est invoquée à chaque étape de la résolution pour indiquer
+    /// l'action effectuée sur la grille
     /// # Errors
     /// Une erreur est retournée si la grille n'est pas (ou plus) cohérente
-    pub fn solve(&mut self) -> Result<bool, SolvingError> {
+    pub fn solve(&mut self, callback: fn(&SolvingAction)) -> Result<bool, SolvingError> {
         #[allow(while_true)]
         while true {
             let action_solve_step = self.solve_step()?;
-            println!("{action_solve_step}");
+            callback(&action_solve_step);
             match action_solve_step {
                 SolvingAction::Solved => return Ok(true),
                 SolvingAction::NoAction => return Ok(false),
