@@ -2,7 +2,7 @@
 //!
 //! `Tectonic` est un jeu de logique.
 //!
-//! Il faut compléter une grille avec les chiffres manquants dans chaque zone entourés de gras, sachant que :
+//! Il faut compléter une grille avec les chiffres manquants dans chaque zone entourée de gras, sachant que :
 //!
 //! 1. Une zone de deux cases contient les chiffres 1 et 2, une zone de 3 cases les chiffres 1, 2 et 3, etc.
 //! 2. Un chiffre placé dans une case ne peut se retrouver dans aucune des cases qui l'entoure (en diagonale y compris).
