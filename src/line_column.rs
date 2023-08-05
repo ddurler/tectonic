@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Add;
 
 /// Position (ligne, colonne) d'une case
 ///
@@ -34,6 +35,17 @@ impl LineColumn {
     }
 }
 
+impl Add for LineColumn {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            line: self.line + other.line,
+            column: self.column + other.column,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
 
@@ -41,7 +53,7 @@ mod test {
 
     #[test]
     fn test_line_column_min_max() {
-        let mut lc = LineColumn::new(0, 0);
+        let mut lc = LineColumn::default();
         assert_eq!(lc.line, 0);
         assert_eq!(lc.column, 0);
 
@@ -52,5 +64,20 @@ mod test {
         lc.min(LineColumn::new(1, 2));
         assert_eq!(lc.line, 1);
         assert_eq!(lc.column, 2);
+    }
+
+    #[test]
+    fn test_line_column_arithmetic() {
+        let lc = LineColumn::new(1, 2);
+
+        assert_eq!(lc, LineColumn::new(1, 2));
+        assert_ne!(lc, LineColumn::default());
+
+        let lc_add = lc
+            + LineColumn {
+                line: 2,
+                column: -1,
+            };
+        assert_eq!(lc_add, LineColumn::new(1 + 2, 2 - 1));
     }
 }

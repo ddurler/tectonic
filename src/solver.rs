@@ -28,6 +28,9 @@ pub enum SolvingAction {
     /// Suppression des chiffres d'une case qui sont déjà dans une de ses cases voisines
     NumbersNeighboring(LineColumn, Vec<u8>),
 
+    /// Suppression des chiffres d'une pair de valeurs dans les cases voisines
+    DualValuesPair(LineColumn, LineColumn, LineColumn, Vec<u8>),
+
     /// Aucune action de résolution trouvée
     NoAction,
 }
@@ -47,7 +50,7 @@ impl fmt::Display for SolvingAction {
             Self::OnlyNumberInZone(c_zone, line_column, n) => {
                 write!(
                     f,
-                    "Zone '{c_zone}', seule la case {line_column} est possible pour '{n}"
+                    "Zone '{c_zone}', seule la case {line_column} est possible pour '{n}'"
                 )
             }
             Self::NumbersInZone(line_column, c_zone, vec_n) => {
@@ -60,6 +63,12 @@ impl fmt::Display for SolvingAction {
                 write!(
                     f,
                     "{vec_n:?} déjà dans les cases voisines de la case {line_column}"
+                )
+            }
+            Self::DualValuesPair(line_column_pair_1, line_column_pair_2, line_column, vec_n) => {
+                write!(
+                    f,
+                    "{vec_n:?} impossible dans la case {line_column} selon les cases voisines {line_column_pair_1} et {line_column_pair_2} "
                 )
             }
             SolvingAction::NoAction => {
@@ -89,16 +98,16 @@ impl fmt::Display for SolvingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SolvingError::NeighboringWithSameNumber(line_column_1, line_column_2, n) => {
-                write!(f, "Le chiffre {n} apparaît dans les cases voisines {line_column_1:?} et {line_column_2:?}")
+                write!(f, "Le chiffre {n} apparaît dans les cases voisines {line_column_1} et {line_column_2}")
             }
             Self::ZoneWithSameNumber(c_zone, n) => {
                 write!(
                     f,
-                    "Le chiffre {n} apparaît plusieurs fois dans la zone '{c_zone}'"
+                    "Le chiffre '{n}' apparaît plusieurs fois dans la zone '{c_zone}'"
                 )
             }
             Self::NoPossibleNumber(line_column) => {
-                write!(f, "Aucun chiffre possible dans la case {line_column:?}")
+                write!(f, "Aucun chiffre possible dans la case {line_column}")
             }
             SolvingError::BadImplementation => write!(f, "Erreur inattendue (voir source code...)"),
         }
@@ -158,6 +167,7 @@ impl Solver {
         while true {
             let action_solve_step = self.solve_step()?;
             callback(&action_solve_step);
+            println!("{self}");
             match action_solve_step {
                 SolvingAction::Solved => return Ok(true),
                 SolvingAction::NoAction => return Ok(false),
@@ -210,6 +220,12 @@ impl Solver {
         }
 
         let action = self.solve_numbers_neighboring();
+        if let SolvingAction::NoAction = action {
+        } else {
+            return Ok(action);
+        }
+
+        let action = self.solve_dual_values_pair();
         if let SolvingAction::NoAction = action {
         } else {
             return Ok(action);
@@ -284,7 +300,7 @@ impl Solver {
             if let CellContent::PossibleNumbers(cell_simple_09_set) = cell.content.clone() {
                 let c_zone = cell.c_zone;
                 let mut simple_09_set = *zone_hash_map.get(&c_zone).unwrap();
-                simple_09_set.intersection(cell_simple_09_set);
+                simple_09_set = simple_09_set.intersection(cell_simple_09_set);
                 if !simple_09_set.is_empty() {
                     // les valeurs dans simple_09_set sont déjà affectées à d'autres cases
                     // de la zone. Elles ne sont pas possible pour cette case
@@ -389,8 +405,8 @@ impl Solver {
                 }
             }
 
-            let mut intersection_simple_09set = cell_simple_09_set;
-            intersection_simple_09set.intersection(neighboring_simple_09_set);
+            let intersection_simple_09set =
+                cell_simple_09_set.intersection(neighboring_simple_09_set);
             if !intersection_simple_09set.is_empty() {
                 // les valeurs dans intersection_simple_09set sont déjà affectées à des cases voisines
                 // Elles ne sont pas possible pour cette case en line_column
@@ -402,6 +418,86 @@ impl Solver {
                 }
                 cell.content = CellContent::PossibleNumbers(new_cell_simple_09_set);
                 return SolvingAction::NumbersNeighboring(cell.line_column, vec_n);
+            }
+        }
+
+        SolvingAction::NoAction
+    }
+
+    /// Etape pour éliminer une paire de chiffres dans une case voisine de 2 autres
+    /// cases ne pouvant avoir que ces 2 valeurs
+    fn solve_dual_values_pair(&mut self) -> SolvingAction {
+        // HashMap des cases avec une paire de valeurs possibles
+        let mut hash_map_line_column: HashMap<LineColumn, Simple09Set> = HashMap::new();
+        for (line_column, cell) in &self.grid.hashmap_cells {
+            if let CellContent::PossibleNumbers(simple_09_set) = cell.content {
+                if simple_09_set.len() == 2 {
+                    hash_map_line_column.insert(*line_column, simple_09_set);
+                }
+            }
+        }
+
+        // Voir l'étude dans ./examples/Etude pairs values;
+        // Le vecteur ci-dessous donne la position relative des cases à parcourir.
+        // Si A est une case avec une paire de valeurs possibles, on examine toutes les cases B
+        // relatives à A selon les coordonnées relatives.
+        // Si ces cases A et B ont la même paire de valeurs possibles alors ces valeurs peuvent être
+        // éliminées de toutes les cases C voisines dont les coordonnées relatives sont données
+        let vec_pairs = [
+            ((0, 1), vec![(-1, 0), (-1, 1), (1, 0), (1, 1)]),
+            ((1, -1), vec![(0, -1), (1, 0)]),
+            ((1, 0), vec![(0, -1), (0, 1), (1, -1), (1, 1)]),
+            ((1, 1), vec![(0, 1), (1, 0)]),
+        ];
+
+        // Parcourt du hash map avec les cases une paire de valeurs possibles
+        for (line_column_a, simple_09_set_a) in &hash_map_line_column {
+            // Parcours du vecteur des paires de case à examiner relativement à line_column_a
+            // Toutes les coordonnées de 'vec_pairs' sont relatives à 'line_column_a'
+            for (relative_b, vec_relatives_c) in &vec_pairs {
+                let relative_line_column_b = LineColumn::new(relative_b.0, relative_b.1);
+                let line_column_b = *line_column_a + relative_line_column_b;
+                // Pour savoir si line_column_b a aussi un paire de valeurs possibles, on le recherche dans hash_map_line_column
+                if let Some(simple_09_set_b) = hash_map_line_column.get(&line_column_b) {
+                    if simple_09_set_a == simple_09_set_b {
+                        // Ici, on a identifié 2 cases a et b qui ont toutes 2 la même paire de valeurs possibles
+                        // On parcourt donc les cases voisines de ces 2 cases
+                        for relative_c in vec_relatives_c {
+                            let relative_line_column_c =
+                                LineColumn::new(relative_c.0, relative_c.1);
+                            let line_column_c = *line_column_a + relative_line_column_c;
+                            // Examen de la case line_column_c de la grille
+                            let option_cell_c = self.grid.get_mut_cell(line_column_c);
+                            if let Some(cell_c) = option_cell_c {
+                                if let CellContent::PossibleNumbers(simple_09_set_c) =
+                                    cell_c.content
+                                {
+                                    let intersection =
+                                        simple_09_set_c.intersection(*simple_09_set_a);
+                                    if !intersection.is_empty() {
+                                        // Bingo !
+                                        // On a trouve une case c avec un ensemble de valeurs possibles
+                                        // qui contient une partie des paires de valeurs possibles des
+                                        // cases a et b qui l'avoisinent...
+                                        let vec_n = intersection.as_vec_u8();
+                                        let mut new_simple_09_set_c = simple_09_set_c;
+                                        for n in &vec_n {
+                                            new_simple_09_set_c.remove(*n);
+                                        }
+                                        cell_c.content =
+                                            CellContent::PossibleNumbers(new_simple_09_set_c);
+                                        return SolvingAction::DualValuesPair(
+                                            *line_column_a,
+                                            line_column_b,
+                                            line_column_c,
+                                            vec_n,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -508,7 +604,7 @@ mod test {
     }
 
     #[test]
-    fn test_check_voisin_nok() {
+    fn test_check_neighboring_nok() {
         let grid = Grid::from_str(
             "
         # NOK car a1 et b1 sont voisins

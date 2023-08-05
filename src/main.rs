@@ -64,13 +64,23 @@ c  c  c2
 fn solve_grid_in_file(path: &str) {
     println!("Lecture de '{path}'...");
     match fs::read_to_string(path) {
-        Err(e) => println!("Erreur de lecture du fichier '{path}': {e}"),
+        Err(e) => println!("Erreur de lecture du fichier '{path}': {e}\n"),
         Ok(file_content) => match Grid::from_str(&file_content) {
-            Err(e) => println!("Erreur dans le fichier '{path}: {e}"),
+            Err(e) => println!("Erreur dans le fichier '{path}': {e}\n"),
             Ok(grid) => {
                 let mut solver = Solver::new(&grid);
-                let _ = solver.solve(|action| println!("{action}"));
-                println!("{solver}");
+                let res_solver = solver.solve(|action| println!("{action}"));
+                match res_solver {
+                    Err(e) => println!("Erreur résolution avec le fichier '{path}': {e}\n"),
+                    Ok(done) => {
+                        if done {
+                            println!("Résolu :)");
+                        } else {
+                            println!("(Non résolu :(");
+                        }
+                        println!("{solver}");
+                    }
+                }
             }
         },
     }

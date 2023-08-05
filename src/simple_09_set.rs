@@ -78,26 +78,32 @@ impl Simple09Set {
         self.0 & digit_mask_bit(digit) != 0
     }
 
-    /// Retire du set les digits qui ne sont pas dans le set en paramètre
+    /// Retourne un set des digits qui ne sont pas dans le set en paramètre
     #[allow(dead_code)]
-    pub fn difference(mut self, other_set: Simple09Set) {
+    pub fn difference(self, other: Simple09Set) -> Self {
+        let mut ret = self;
         for digit in 0..=9 {
-            if self.contains(digit) && !other_set.contains(digit) {
-                self.remove(digit);
+            if ret.contains(digit) && !other.contains(digit) {
+                ret.remove(digit);
             }
         }
+        ret
     }
 
-    /// Garde dans le set que les digits qui sont également dans le set en paramètre
+    /// Retourne un set avec que les digits qui sont également dans le set en paramètre
     #[allow(dead_code)]
-    pub fn intersection(&mut self, other_set: Simple09Set) {
-        self.0 &= other_set.0;
+    pub fn intersection(self, other: Simple09Set) -> Self {
+        let mut ret = self;
+        ret.0 &= other.0;
+        ret
     }
 
-    /// Ajoute dans le set les digits qui sont également dans le set en paramètre
+    /// Retourne un set avec les digits qui sont également dans le set en paramètre
     #[allow(dead_code)]
-    pub fn union(&mut self, other_set: Simple09Set) {
-        self.0 |= other_set.0;
+    pub fn union(self, other: Simple09Set) -> Self {
+        let mut ret = self;
+        ret.0 |= other.0;
+        ret
     }
 
     /// Retourne un Vec<u8> avec toutes les valeurs du set
@@ -176,30 +182,30 @@ mod test {
 
     #[test]
     fn test_simple_09_set_intersection() {
-        let mut set1 = Simple09Set::new(&[1, 2, 3]);
+        let set1 = Simple09Set::new(&[1, 2, 3]);
         let set2 = Simple09Set::new(&[2, 3, 4]);
 
         // (1 2 3) intersection (2 3 4) -> (2 3)
-        set1.intersection(set2);
+        let intersection = set1.intersection(set2);
 
-        assert_eq!(set1.len(), 2);
-        assert!(!set1.contains(1));
-        assert!(set1.contains(2));
-        assert!(set1.contains(3));
+        assert_eq!(intersection.len(), 2);
+        assert!(!intersection.contains(1));
+        assert!(intersection.contains(2));
+        assert!(intersection.contains(3));
     }
 
     #[test]
     fn test_simple_09_set_union() {
-        let mut set1 = Simple09Set::new(&[1, 2, 3]);
+        let set1 = Simple09Set::new(&[1, 2, 3]);
         let set2 = Simple09Set::new(&[2, 3, 4]);
 
-        // (1 2 3) intersection (2 3 4) -> (2 3)
-        set1.union(set2);
+        // (1 2 3) union (2 3 4) -> (1 2 3 4)
+        let union = set1.union(set2);
 
-        assert_eq!(set1.len(), 4);
-        assert!(set1.contains(1));
-        assert!(set1.contains(2));
-        assert!(set1.contains(3));
-        assert!(set1.contains(4));
+        assert_eq!(union.len(), 4);
+        assert!(union.contains(1));
+        assert!(union.contains(2));
+        assert!(union.contains(3));
+        assert!(union.contains(4));
     }
 }
