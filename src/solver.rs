@@ -31,6 +31,10 @@ pub enum SolvingAction {
     /// Suppression des chiffres d'une pair de valeurs dans les cases voisines
     DualValuesPair(LineColumn, LineColumn, LineColumn, Vec<u8>),
 
+    // Suppression d'une valeur dans une paire de possibilité car elle mène à une impossibilité
+    // après évaluation de la résolution en testant cette valeur
+    TryAndFail(LineColumn, u8, u8),
+
     /// Aucune action de résolution trouvée
     NoAction,
 }
@@ -42,33 +46,42 @@ impl fmt::Display for SolvingAction {
                 write!(f, "Grille résolue")
             }
             Self::InitPossibleNumbers => {
-                write!(f, "Initialisation des chiffres possibles dans le cases...")
+                write!(f, "Initialisation des chiffres possibles des cases...")
             }
             Self::SinglePossibleNumber(line_column, n) => {
-                write!(f, "Seule possibilité pour la case {line_column}: '{n}'")
+                write!(
+                    f,
+                    "[{n}] est la seule possibilité pour la case {line_column}"
+                )
             }
             Self::OnlyNumberInZone(c_zone, line_column, n) => {
                 write!(
                     f,
-                    "Zone '{c_zone}', seule la case {line_column} est possible pour '{n}'"
+                    "Zone '{c_zone}', seule la case {line_column} est possible pour [{n}]"
                 )
             }
             Self::NumbersInZone(line_column, c_zone, vec_n) => {
                 write!(
                     f,
-                    "{vec_n:?} déjà dans la zone '{c_zone}' de la case {line_column}"
+                    "{vec_n:?} déjà placé dans la zone '{c_zone}' de la case {line_column}"
                 )
             }
             Self::NumbersNeighboring(line_column, vec_n) => {
                 write!(
                     f,
-                    "{vec_n:?} déjà dans les cases voisines de la case {line_column}"
+                    "{vec_n:?} est dans les cases voisines de la case {line_column}"
                 )
             }
             Self::DualValuesPair(line_column_pair_1, line_column_pair_2, line_column, vec_n) => {
                 write!(
                     f,
-                    "{vec_n:?} impossible dans la case {line_column} selon les cases voisines {line_column_pair_1} et {line_column_pair_2} "
+                    "{vec_n:?} impossible dans la case {line_column} selon les cases voisines {line_column_pair_1} et {line_column_pair_2}"
+                )
+            }
+            Self::TryAndFail(line_column, n_fail, n_ok) => {
+                write!(
+                    f,
+                    "[{n_ok}] est placé pour {line_column} car le choix de [{n_fail}] mène à une incohérence"
                 )
             }
             SolvingAction::NoAction => {
@@ -167,7 +180,7 @@ impl Solver {
         while true {
             let action_solve_step = self.solve_step()?;
             callback(&action_solve_step);
-            println!("{self}");
+            // println!("{self}");
             match action_solve_step {
                 SolvingAction::Solved => return Ok(true),
                 SolvingAction::NoAction => return Ok(false),
@@ -226,6 +239,12 @@ impl Solver {
         }
 
         let action = self.solve_dual_values_pair();
+        if let SolvingAction::NoAction = action {
+        } else {
+            return Ok(action);
+        }
+
+        let action = self.solve_try_and_fail();
         if let SolvingAction::NoAction = action {
         } else {
             return Ok(action);
@@ -497,6 +516,44 @@ impl Solver {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        SolvingAction::NoAction
+    }
+
+    /// Etape pour éliminer une valeur dans une paire de chiffres possible d'une case
+    /// parce que son choix entraîne une incohérence dans la grille
+    fn solve_try_and_fail(&mut self) -> SolvingAction {
+        // HashMap des cases avec une paire de valeurs possibles
+        let mut hash_map_line_column: HashMap<LineColumn, Simple09Set> = HashMap::new();
+        for (line_column, cell) in &self.grid.hashmap_cells {
+            if let CellContent::PossibleNumbers(simple_09_set) = cell.content {
+                if simple_09_set.len() == 2 {
+                    hash_map_line_column.insert(*line_column, simple_09_set);
+                }
+            }
+        }
+
+        // On teste brutalement la résolution en forçant les valeurs possibles pour les cases sélectionnées
+        // Parcourt du hash map avec les cases une paire de valeurs possibles
+        for (line_column, simple_09_set) in &hash_map_line_column {
+            let vec_n = simple_09_set.as_vec_u8();
+            for n in &vec_n {
+                // Clone la grille courante pour tenter de la résoudre en forçant la valeur de cette case
+                let mut new_grid = self.grid.clone();
+                let new_cell = new_grid.get_mut_cell(*line_column).unwrap();
+                new_cell.content = CellContent::Number(*n);
+                let mut new_solver = Solver::new(&new_grid);
+                if new_solver.solve(|_action| {}).is_err() {
+                    // Bingo !
+                    // La valeur n pour line_column entraîne une incohérence de la grille
+                    // On force l'autre valeur
+                    let autre_n = if vec_n[0] == *n { vec_n[1] } else { vec_n[0] };
+                    let cell = self.grid.get_mut_cell(*line_column).unwrap();
+                    cell.content = CellContent::Number(autre_n);
+                    return SolvingAction::TryAndFail(*line_column, *n, autre_n);
                 }
             }
         }
