@@ -201,6 +201,7 @@ impl Solver {
         // Vérifie la cohérence de la grille
         self.check()?;
 
+        // Initialisation une fois des possibilités
         if !self.init_cell_contents {
             self.solve_step_possible_numbers();
             self.init_cell_contents = true;
@@ -212,44 +213,26 @@ impl Solver {
             return Ok(SolvingAction::Solved);
         }
 
-        // Fonctions-actions pour la résolution
+        // Listes des fonctions -> action pour la résolution
+        let vec_of_functions: Vec<fn(&mut Self) -> SolvingAction> = vec![
+            Self::solve_single_possible_number,
+            Self::solve_numbers_in_zone,
+            Self::solve_only_number_in_zone,
+            Self::solve_numbers_neighboring,
+            Self::solve_dual_values_pair,
+            Self::solve_try_and_fail,
+        ];
 
-        let action = self.solve_single_possible_number();
-        if let SolvingAction::NoAction = action {
-        } else {
-            return Ok(action);
+        // Parcourt des fonctions de résolution à la recherche d'une action possible
+        for function in vec_of_functions {
+            let action = function(self);
+            if let SolvingAction::NoAction = action {
+            } else {
+                return Ok(action);
+            }
         }
 
-        let action = self.solve_numbers_in_zone();
-        if let SolvingAction::NoAction = action {
-        } else {
-            return Ok(action);
-        }
-
-        let action = self.solve_only_number_in_zone();
-        if let SolvingAction::NoAction = action {
-        } else {
-            return Ok(action);
-        }
-
-        let action = self.solve_numbers_neighboring();
-        if let SolvingAction::NoAction = action {
-        } else {
-            return Ok(action);
-        }
-
-        let action = self.solve_dual_values_pair();
-        if let SolvingAction::NoAction = action {
-        } else {
-            return Ok(action);
-        }
-
-        let action = self.solve_try_and_fail();
-        if let SolvingAction::NoAction = action {
-        } else {
-            return Ok(action);
-        }
-
+        // Aucune action trouvée
         Ok(SolvingAction::NoAction)
     }
 
@@ -726,5 +709,24 @@ mod test {
 
         assert!(solver.check().is_ok());
         assert!(!solver.is_solved());
+    }
+
+    #[test]
+    fn test_is_hard_puzzle_solved() {
+        let grid = Grid::from_str(
+            "
+            # Jeu Le Routard no 13 - page 38 (niveau rouge)
+            a  a5 a  b  b
+            c  a  a  b3 b
+            d  e  e  e  f
+            d5 d  e2 e  g
+            d  d  g  g1 g
+        ",
+        )
+        .unwrap();
+
+        let mut solver = Solver::new(&grid);
+        let _ = solver.solve(|_action| {});
+        assert!(solver.is_solved());
     }
 }
