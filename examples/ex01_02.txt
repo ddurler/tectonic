@@ -1,0 +1,6 @@
+ # Jeu Le Routard no 13 - page 98 (niveau vert)
+a  a4 b  b
+a2 a  c  b5
+a  c  c2 b
+d  c1 c  b
+d3 d  d5 d

@@ -1,4 +1,0 @@
- # Jeu Le Routard no 13 - page 38 (exemple)
-a1 b  b2
-b4 b  b
-c  c  c2

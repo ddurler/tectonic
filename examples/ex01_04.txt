@@ -1,4 +1,4 @@
- # Jeu Le Routard no 13 - page 38 (niveau vert)
+ # Jeu Le Routard no 13 - page 98 (niveau vert)
 a  a5 b  c  c
 d  a  a3 a  c
 d  d5 e  e2 f

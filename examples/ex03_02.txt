@@ -1,0 +1,8 @@
+ # Jeux Soleil no 9 - page 23 (Niveau 1)
+a  a4 b  b1 b  c
+a  a  a3 b  b  d
+e2 e  f  f2 d  d1
+e  e  f  f  f4 d
+e3 g  h  h  i  i1
+g  g5 g  i4 i  i
+g1 j  j  k  k  k1

@@ -1,0 +1,12 @@
+ # Jeu Le Routard no 13 - page 98 (niveau orange)
+a  a5 a  a  b3
+c  c  c  a4 b
+d  c  c  b  b
+e5 f  f  f1 b
+e  f  f  g  g
+e  e  h  h  g
+e  h3 h  h  i
+j1 j  m  i  i3
+j  j3 j  i5 i
+k  k  k  l  l3
+k  k  l  l2 l
