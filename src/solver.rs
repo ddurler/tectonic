@@ -129,13 +129,40 @@ impl fmt::Display for SolvingError {
 
 impl std::error::Error for SolvingError {}
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DifficultyLevel {
+    #[default]
+    Unknown,
+
+    Easy,
+    Medium,
+    Hard,
+    VeryHard,
+}
+
+impl fmt::Display for DifficultyLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unknown => write!(f, "Difficulté inconnue"),
+            Self::Easy => write!(f, "Difficulté facile"),
+            Self::Medium => write!(f, "Difficulté moyenne"),
+            Self::Hard => write!(f, "Difficile"),
+            Self::VeryHard => write!(f, "Très Difficile"),
+        }
+    }
+}
+
 /// Structure pour la résolution d'une grille tectonic
 #[derive(Debug, Default)]
 pub struct Solver {
+    /// Grille tectonic
     grid: Grid,
 
     /// True lorsque toutes les cases avec un contenu `Undefined` ont été traitées
     init_cell_contents: bool,
+
+    /// Difficulté rencontrée pendant la résolution
+    pub difficulty_level: DifficultyLevel,
 }
 
 impl fmt::Display for Solver {
@@ -154,6 +181,7 @@ impl Solver {
         Solver {
             grid: grid.clone(),
             init_cell_contents: false,
+            difficulty_level: DifficultyLevel::default(),
         }
     }
 
@@ -213,21 +241,23 @@ impl Solver {
             return Ok(SolvingAction::Solved);
         }
 
-        // Listes des fonctions -> action pour la résolution
-        let vec_of_functions: Vec<fn(&mut Self) -> SolvingAction> = vec![
-            Self::solve_single_possible_number,
-            Self::solve_numbers_in_zone,
-            Self::solve_only_number_in_zone,
-            Self::solve_numbers_neighboring,
-            Self::solve_dual_values_pair,
-            Self::solve_try_and_fail,
+        // Listes des fonctions -> action / niveau de difficulté pour la résolution
+        #[allow(clippy::type_complexity)]
+        let vec_of_functions: Vec<(fn(&mut Self) -> SolvingAction, DifficultyLevel)> = vec![
+            (Self::solve_single_possible_number, DifficultyLevel::Easy),
+            (Self::solve_numbers_in_zone, DifficultyLevel::Easy),
+            (Self::solve_only_number_in_zone, DifficultyLevel::Easy),
+            (Self::solve_numbers_neighboring, DifficultyLevel::Medium),
+            (Self::solve_dual_values_pair, DifficultyLevel::Hard),
+            (Self::solve_try_and_fail, DifficultyLevel::VeryHard),
         ];
 
         // Parcourt des fonctions de résolution à la recherche d'une action possible
-        for function in vec_of_functions {
+        for (function, difficulty) in vec_of_functions {
             let action = function(self);
             if let SolvingAction::NoAction = action {
             } else {
+                self.difficulty_level = DifficultyLevel::max(self.difficulty_level, difficulty);
                 return Ok(action);
             }
         }

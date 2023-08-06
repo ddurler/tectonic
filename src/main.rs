@@ -74,7 +74,7 @@ fn solve_grid_in_file(path: &str) {
                     Err(e) => println!("Erreur résolution avec le fichier '{path}': {e}\n"),
                     Ok(done) => {
                         if done {
-                            println!("Résolu :)");
+                            println!("Résolu ({})", solver.difficulty_level);
                         } else {
                             println!("(Non résolu :(");
                         }
