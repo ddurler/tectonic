@@ -5,7 +5,7 @@ use crate::line_column::LineColumn;
 /// Cette structure permet d'itérer sur toutes les cases voisines dans la grille.
 ///
 /// Une case est voisine dans toutes les directions (y compris dans les diagonales).
-/// La taille de la grille (min et max) pour les lignes et les colonnes est spécifiées pour ne pas
+/// La taille de la grille (min et max) pour les lignes et les colonnes est spécifiée pour ne pas
 /// faire apparaître de case hors de la grille lors de l'itération.
 #[derive(Debug)]
 pub struct NeighboringLineColumns {

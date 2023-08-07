@@ -36,6 +36,7 @@ impl fmt::Display for Simple09Set {
         write!(f, "{:?}", self.as_vec_u8())
     }
 }
+
 impl Simple09Set {
     /// Constructeur
     #[allow(dead_code)]

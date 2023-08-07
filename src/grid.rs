@@ -5,12 +5,14 @@ use std::str::FromStr;
 
 use crate::line_column::LineColumn;
 use crate::simple_09_set::Simple09Set;
-// use crate::neighboring_line_columns::NeighboringLineColumns;
 
 /// Information pour une zone de la grille tectonic
 #[derive(Clone, Debug, Default)]
 pub struct Zone {
+    // Lettre qui représente cette zone
     pub c_zone: char,
+
+    // Liste des cases de cette zone
     pub set_line_column: HashSet<LineColumn>,
 }
 
@@ -31,8 +33,13 @@ pub enum CellContent {
 /// Information pour une case de la grille tectonic
 #[derive(Clone, Debug, Default)]
 pub struct Cell {
+    // Zone de la case
     pub c_zone: char,
+
+    // Position de la case dans la grille
     pub line_column: LineColumn,
+
+    // Contenu de la case
     pub content: CellContent,
 }
 

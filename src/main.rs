@@ -5,7 +5,7 @@ use std::str::FromStr;
 use tectonic::{Grid, Solver};
 
 pub fn main() {
-    // Arguments de la line de commande
+    // Arguments de la ligne de commande
     let args: Vec<String> = env::args().collect();
 
     if args.len() == 2 {

@@ -49,4 +49,4 @@ mod simple_09_set;
 mod solver;
 
 pub use grid::{Grid, ParseGridError};
-pub use solver::{Solver, SolvingAction, SolvingError};
+pub use solver::{DifficultyLevel, Solver, SolvingAction, SolvingError};

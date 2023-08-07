@@ -28,7 +28,7 @@ pub enum SolvingAction {
     /// Suppression des chiffres d'une case qui sont déjà dans une de ses cases voisines
     NumbersNeighboring(LineColumn, Vec<u8>),
 
-    /// Suppression des chiffres d'une pair de valeurs dans les cases voisines
+    /// Suppression des chiffres d'une paire de valeurs dans les cases voisines
     DualValuesPair(LineColumn, LineColumn, LineColumn, Vec<u8>),
 
     // Suppression d'une valeur dans une paire de possibilité car elle mène à une impossibilité
@@ -129,6 +129,7 @@ impl fmt::Display for SolvingError {
 
 impl std::error::Error for SolvingError {}
 
+/// Niveau de difficulté rencontré pendant la résolution
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DifficultyLevel {
     #[default]
@@ -197,7 +198,7 @@ impl Solver {
         true
     }
 
-    /// Tente de résoudre a grille en itérant continûment sur toutes les étapes de résolution
+    /// Tente de résoudre la grille en itérant continûment sur toutes les étapes de résolution
     /// Retourne true si la grille est résolue
     /// La fonction de callback est invoquée à chaque étape de la résolution pour indiquer
     /// l'action effectuée sur la grille
@@ -231,9 +232,8 @@ impl Solver {
 
         // Initialisation une fois des possibilités
         if !self.init_cell_contents {
-            self.solve_step_possible_numbers();
             self.init_cell_contents = true;
-            return Ok(SolvingAction::InitPossibleNumbers);
+            return Ok(self.solve_step_possible_numbers());
         }
 
         // Grille résolue ?
@@ -267,8 +267,8 @@ impl Solver {
     }
 
     /// Etape initiale de résolution pour modifier toutes les cases avec un
-    /// contenu `Undefined` en un contenu `PossibleNumbers` selon les chiffres
-    /// déjà en place dans la zone
+    /// contenu `Undefined` en un contenu `PossibleNumbers` selon le nombre de
+    /// cases dans la zone
     fn solve_step_possible_numbers(&mut self) -> SolvingAction {
         // Prépare la liste des des chiffres possibles par zone
         let mut zone_hash_map: HashMap<char, Simple09Set> = HashMap::new();
@@ -292,12 +292,13 @@ impl Solver {
             }
         }
 
-        SolvingAction::NoAction
+        // Cet étape n'est réalisée qu'une fois en début de résolution
+        SolvingAction::InitPossibleNumbers
     }
 
     /// Etape pour identifier les cases qui n'ont qu'une seule possibilité pour le chiffre
     fn solve_single_possible_number(&mut self) -> SolvingAction {
-        // Recherche de toutes les cases avec un contenu 'Undefined'
+        // Recherche de toutes les cases avec un contenu 'PossibleNumbers' avec une seule possibilité
         for cell in self.grid.hashmap_cells.values_mut() {
             if let CellContent::PossibleNumbers(simple_09_set) = cell.content.clone() {
                 if simple_09_set.len() == 1 {
@@ -335,7 +336,7 @@ impl Solver {
                 simple_09_set = simple_09_set.intersection(cell_simple_09_set);
                 if !simple_09_set.is_empty() {
                     // les valeurs dans simple_09_set sont déjà affectées à d'autres cases
-                    // de la zone. Elles ne sont pas possible pour cette case
+                    // de la zone. Elles ne sont pas possibles pour cette case
                     let vec_n = simple_09_set.as_vec_u8();
                     let mut new_cell_simple_09_set = cell_simple_09_set;
                     for n in &vec_n {
@@ -354,7 +355,10 @@ impl Solver {
     fn solve_only_number_in_zone(&mut self) -> SolvingAction {
         // Énumération spécifique pour cette recherche
         enum OnlyNumber {
+            // Une seule case identifiée pour une valeur
             OnlyLineColumn(LineColumn),
+
+            // Plusieurs cases identifiées pour une valeur
             ManyLineColumns,
         }
 
@@ -493,7 +497,8 @@ impl Solver {
                 if let Some(simple_09_set_b) = hash_map_line_column.get(&line_column_b) {
                     if simple_09_set_a == simple_09_set_b {
                         // Ici, on a identifié 2 cases a et b qui ont toutes 2 la même paire de valeurs possibles
-                        // On parcourt donc les cases voisines de ces 2 cases
+                        // On parcourt donc les cases relatives voisines de ces 2 cases qui peuvent être
+                        // affectées par ces 2 paires de valeurs qui les entourent
                         for relative_c in vec_relatives_c {
                             let relative_line_column_c =
                                 LineColumn::new(relative_c.0, relative_c.1);
@@ -742,7 +747,7 @@ mod test {
     }
 
     #[test]
-    fn test_is_hard_puzzle_solved() {
+    fn test_hard_puzzle_is_solved() {
         let grid = Grid::from_str(
             "
             # Jeu Le Routard no 13 - page 38 (niveau rouge)
