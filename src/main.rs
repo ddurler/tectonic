@@ -19,9 +19,10 @@ pub fn main() {
 
 fn help() {
     println!("
-Solver de grille 'Tectonic'
+Solver de grille 'Tectonic'.
 
 `Tectonic` est un jeu de logique.
+Ce jeu est également connu sous le nom de 'Suguru' ou 'Kemaru'.
 
 Il faut compléter une grille avec les chiffres manquants dans chaque zone entourée de gras, sachant que :
 
