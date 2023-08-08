@@ -1,0 +1,8 @@
+ # https://www.20minutes.fr/services/jeux/kemaru
+a  a  a  a  a5 b
+c  c  d  e  b  b
+c  c3 d  e  e  f
+g  h5 h  h  e  f
+g  g  g  h2 h4 f
+i  i  i  i  f  f5
+

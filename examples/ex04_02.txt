@@ -1,0 +1,8 @@
+ # Jeux Soleil no 9 - page 135 (Niveau 2)
+a  b  b  b  b4 c
+d4 d  b  c3 c  c
+e  d  d  f  g1 c
+e  d  f4 f  g  g
+h1 f  f  i  i  g
+h  h4 h  j  i  g
+h  j  j  j  i3 i
