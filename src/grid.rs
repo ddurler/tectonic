@@ -139,7 +139,7 @@ impl Grid {
         }
     }
 
-    /// Accesseur à une zone de la grille (créée si elle n'existe pas)
+    /// Accesseur (privé) à une zone de la grille (créée si elle n'existe pas)
     #[must_use]
     fn get_or_create_zone(&mut self, c_zone: char) -> &mut Zone {
         self.hashmap_zones
@@ -147,13 +147,13 @@ impl Grid {
             .or_insert_with(Zone::default)
     }
 
-    /// Accesseur à une zone de la grille (None) si elle n'existe pas
+    /// Accesseur (public) à une zone de la grille (None) si elle n'existe pas
     #[must_use]
     pub fn get_zone(&mut self, c_zone: char) -> Option<&mut Zone> {
         self.hashmap_zones.get_mut(&c_zone)
     }
 
-    /// Accesseur à une case de la grille (créée si elle n'existe pas)
+    /// Accesseur (privé) à une case de la grille (créée si elle n'existe pas)
     #[must_use]
     fn get_or_create_cell(&mut self, line_column: LineColumn) -> &mut Cell {
         self.hashmap_cells
@@ -161,13 +161,13 @@ impl Grid {
             .or_insert_with(Cell::default)
     }
 
-    /// Accesseur à une case non mutable de la grille (None) si elle n'existe pas
+    /// Accesseur (public) à une case non mutable de la grille (None) si elle n'existe pas
     #[must_use]
     pub fn get_cell(&self, line_column: LineColumn) -> Option<&Cell> {
         self.hashmap_cells.get(&line_column)
     }
 
-    /// Accesseur à une case mutable de la grille (None) si elle n'existe pas
+    /// Accesseur (public) à une case mutable de la grille (None) si elle n'existe pas
     #[must_use]
     pub fn get_mut_cell(&mut self, line_column: LineColumn) -> Option<&mut Cell> {
         self.hashmap_cells.get_mut(&line_column)

@@ -20,6 +20,7 @@ impl fmt::Display for LineColumn {
 }
 
 impl LineColumn {
+    #[must_use]
     pub fn new(line: i32, column: i32) -> Self {
         LineColumn { line, column }
     }

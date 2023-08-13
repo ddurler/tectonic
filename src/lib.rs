@@ -48,5 +48,6 @@ mod neighboring_line_columns;
 mod simple_09_set;
 mod solver;
 
-pub use grid::{Grid, ParseGridError};
+pub use grid::{Cell, CellContent, Grid, ParseGridError};
+pub use line_column::LineColumn;
 pub use solver::{DifficultyLevel, Solver, SolvingAction, SolvingError};

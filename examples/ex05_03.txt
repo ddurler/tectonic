@@ -1,0 +1,9 @@
+ # Fléchés niveau 4 n°63 page 107 (pub)
+a1 a  b  b  b  b  c  c2
+a  a  b  d  d  e  c  c
+f  a4 d  d  d  e  g  c5
+f5 f  f  h  i  g  g  g
+j  f4 h  h  i2 i  i3 g
+j  j  h3 k  l  i  m  n
+o  o  h  k  l4 p  m  m4
+o5 o  o  l1 l  l  m  m
