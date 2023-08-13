@@ -94,6 +94,12 @@ impl fmt::Display for SolvingAction {
 /// Cas d'erreurs possibles pendant la résolution de la grille tectonic
 #[derive(Debug)]
 pub enum SolvingError {
+    /// Zone avec trop de cases
+    ZoneTooLong(char),
+
+    /// Case avec un chiffre plus grand que la taille de la zone
+    ZoneWithUnexpectedNumber(char, LineColumn, u8),
+
     /// Deux cases voisines avec le même chiffre
     NeighboringWithSameNumber(LineColumn, LineColumn, u8),
 
@@ -110,6 +116,15 @@ pub enum SolvingError {
 impl fmt::Display for SolvingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            SolvingError::ZoneTooLong(c_zone) => {
+                write!(f, "La zone '{c_zone}' est trop grande")
+            }
+            SolvingError::ZoneWithUnexpectedNumber(c_zone, line_column, n) => {
+                write!(
+                    f,
+                    "Le chiffre '{n}' en {line_column} n'est pas possible dans la zone '{c_zone}'"
+                )
+            }
             SolvingError::NeighboringWithSameNumber(line_column_1, line_column_2, n) => {
                 write!(f, "Le chiffre {n} apparaît dans les cases voisines {line_column_1} et {line_column_2}")
             }
@@ -581,9 +596,50 @@ impl Solver {
 
     /// Vérifie la consistance de la grille
     fn check(&self) -> Result<(), SolvingError> {
+        if !self.init_cell_contents {
+            self.check_zone_too_long()?;
+            self.check_zone_with_unexpected_number()?;
+        }
         self.check_neighboring_cells()?;
         self.check_zone_numbers()?;
         self.check_cell_with_no_possible_values()?;
+        Ok(())
+    }
+
+    /// Vérification (initiale) de la taille des zones
+    fn check_zone_too_long(&self) -> Result<(), SolvingError> {
+        // Parcourt des zones
+        for (c_zone, zone) in &self.grid.hashmap_zones {
+            if zone.set_line_column.len() > 9 {
+                // C'est une erreur si la zone a plus de 9 cases
+                return Err(SolvingError::ZoneTooLong(*c_zone));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Vérification (initiale) de valeur inattendue dans une zone
+    fn check_zone_with_unexpected_number(&self) -> Result<(), SolvingError> {
+        // Parcourt des zones
+        for (c_zone, zone) in &self.grid.hashmap_zones {
+            // Parcourt des cases de la zone
+            let zone_len = zone.set_line_column.len();
+            for line_column in &zone.set_line_column {
+                let cell = self.grid.get_cell(*line_column).unwrap();
+                if let CellContent::Number(n) = cell.content {
+                    // C'est une erreur si une case contient un chiffre plus grand que la taille de la zone
+                    if usize::from(n) > zone_len {
+                        return Err(SolvingError::ZoneWithUnexpectedNumber(
+                            *c_zone,
+                            *line_column,
+                            n,
+                        ));
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -676,6 +732,41 @@ mod test {
         let solver = Solver::new(&grid);
 
         assert!(solver.check().is_ok());
+    }
+
+    #[test]
+    fn test_check_zone_too_long() {
+        let grid = Grid::from_str(
+            "
+        # NOK car trop de cases dans la zone 'a'
+        a1 a  a  b  a
+        b  b  a  a  a
+        c  c  a  a  a
+        c  c  a  a  a
+        ",
+        )
+        .unwrap();
+
+        let solver = Solver::new(&grid);
+
+        assert!(solver.check().is_err());
+    }
+
+    #[test]
+    fn test_check_zone_with_unexpected_number() {
+        let grid = Grid::from_str(
+            "
+        # NOK car b7 n'est pas possible dans une zone de 5 cases
+        a1 b  b
+        b  b7  b
+        c  c  c2
+        ",
+        )
+        .unwrap();
+
+        let solver = Solver::new(&grid);
+
+        assert!(solver.check().is_err());
     }
 
     #[test]
