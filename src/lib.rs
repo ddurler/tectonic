@@ -3,7 +3,7 @@
 //! `Tectonic` est un jeu de logique.
 //! Ce jeu est également connu sous le nom de 'Suguru' ou 'Kemaru'.
 //!
-//! Il faut compléter une grille avec les chiffres manquants dans chaque zone entourée de gras, sachant que :
+//! Il faut compléter une grille avec les chiffres manquants dans chaque zone, sachant que :
 //!
 //! 1. Une zone de deux cases contient les chiffres 1 et 2, une zone de 3 cases les chiffres 1, 2 et 3, etc.
 //! 2. Un chiffre placé dans une case ne peut se retrouver dans aucune des cases qui l'entoure (en diagonale y compris).
@@ -18,7 +18,7 @@
 //!
 //! ```rust
 //! use std::str::FromStr;
-//! use tectonic::{Grid, Solver};
+//! use tectonic::{Grid, Solver, SolvingOption};
 //!
 //! // Exemple de création d'une grille et de résolution
 //! // Les zones sont représentées par les lettres 'a', 'b' et 'c'
@@ -39,7 +39,7 @@
 //!
 //! // Résolution de la grille
 //! let mut solver = Solver::new(&grid);
-//! let _ = solver.solve(|action| println!("{action}"));
+//! let _ = solver.solve(&[SolvingOption::StepPrintAction]);
 //! println!("{solver}");
 //! ```
 mod grid;
@@ -50,4 +50,4 @@ mod solver;
 
 pub use grid::{Cell, CellContent, Grid, ParseGridError};
 pub use line_column::LineColumn;
-pub use solver::{DifficultyLevel, Solver, SolvingAction, SolvingError};
+pub use solver::{DifficultyLevel, Solver, SolvingAction, SolvingError, SolvingOption};

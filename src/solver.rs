@@ -7,12 +7,44 @@ use crate::line_column::LineColumn;
 use crate::neighboring_line_columns::NeighboringLineColumns;
 use crate::simple_09_set::Simple09Set;
 
-// Niveau max de récursion avec la fonction récursive `solve_try_and_see`.
+// Niveau max de récursion par défaut avec la fonction récursive `solve_try_and_see`.
 // Cette fonction peut être appelée récursivement si la grille à résoudre
 // est très complexe (ou si elle est en cours de construction)
 // On stoppe les niveaux trop élevés de recherche par récursion qui correspondrait
 // à une solution trop difficile à trouver
-const MAX_TRY_AND_SEE_RECURSION_LEVEL: i32 = 3;
+const DEFAULT_MAX_TRY_AND_SEE_RECURSION_LEVEL: i32 = 3;
+
+/// Options lors de la résolution
+pub enum SolvingOption {
+    /// Affichage de l'action faite à chaque étape de la résolution
+    StepPrintAction,
+
+    /// Appel d'une closure avec l'action faite à chaque étape de la résolution
+    StepCallbackAction(fn(&SolvingAction)),
+
+    /// Affichage de la grille à chaque étape de la résolution
+    StepPrintGrid,
+
+    /// Appel d'une closure avec le contenu du solver à chaque étape de la résolution
+    StepCallbackSolver(fn(&Solver)),
+
+    /// Limitation du niveau de récursion lors de la recherche par 'essai' (niveau très difficile)
+    /// Une valeur de 0, inhibe cette possibilité qui peut mener à des temps de calculs relativement long
+    /// Une valeur d'au moins 3 est nécessaire pour des grilles très très difficiles
+    MaxTryAndSeeRecursionLevel(i32),
+}
+
+impl SolvingOption {
+    fn get_max_try_and_see_recursion_level(options: &[SolvingOption], default_level: i32) -> i32 {
+        for option in options {
+            if let SolvingOption::MaxTryAndSeeRecursionLevel(level) = option {
+                return *level;
+            }
+        }
+
+        default_level
+    }
+}
 
 /// Action possible effectuée à chaque étape de résolution
 #[derive(Debug, PartialEq, Eq)]
@@ -197,6 +229,9 @@ pub struct Solver {
     /// Difficulté rencontrée pendant la résolution
     pub difficulty_level: DifficultyLevel,
 
+    /// Niveau max de récursion dans la recherche try & see
+    pub max_try_and_see_recursion_level: i32,
+
     /// Niveau de récursion dans la rechercher try & see
     pub try_and_see_recursion_level: i32,
 }
@@ -218,6 +253,7 @@ impl Solver {
             grid: grid.clone(),
             init_cell_contents: false,
             difficulty_level: DifficultyLevel::default(),
+            max_try_and_see_recursion_level: DEFAULT_MAX_TRY_AND_SEE_RECURSION_LEVEL,
             try_and_see_recursion_level: 0,
         }
     }
@@ -234,18 +270,39 @@ impl Solver {
         true
     }
 
+    /// Effectue les callbacks définis en option à chaque étape de la résolution
+    fn do_step_callback(&self, options: &[SolvingOption], action: &SolvingAction) {
+        for option in options {
+            match option {
+                SolvingOption::StepPrintAction => println!("{action}"),
+                SolvingOption::StepCallbackAction(f) => f(action),
+                SolvingOption::StepPrintGrid => println!("{self}"),
+                SolvingOption::StepCallbackSolver(f) => f(self),
+                SolvingOption::MaxTryAndSeeRecursionLevel(_) => (),
+            }
+        }
+    }
+
     /// Tente de résoudre la grille en itérant continûment sur toutes les étapes de résolution
     /// Retourne true si la grille est résolue
-    /// La fonction de callback est invoquée à chaque étape de la résolution pour indiquer
-    /// l'action effectuée sur la grille
     /// # Errors
     /// Une erreur est retournée si la grille n'est pas (ou plus) cohérente
-    pub fn solve(&mut self, callback: fn(&SolvingAction)) -> Result<bool, SolvingError> {
+    pub fn solve(&mut self, options: &[SolvingOption]) -> Result<bool, SolvingError> {
+        // Choix optionnel pour le niveau de récursion dans les recherches très difficiles...
+        self.max_try_and_see_recursion_level = SolvingOption::get_max_try_and_see_recursion_level(
+            options,
+            DEFAULT_MAX_TRY_AND_SEE_RECURSION_LEVEL,
+        );
+
         #[allow(while_true)]
         while true {
+            // Etape de résolution
             let action_solve_step = self.solve_step()?;
-            callback(&action_solve_step);
-            // println!("{self}");
+
+            // Callback(s) demandé(s) à chaque étape
+            self.do_step_callback(options, &action_solve_step);
+
+            // Status après cette action ?
             match action_solve_step {
                 SolvingAction::Solved => return Ok(true),
                 SolvingAction::NoAction => return Ok(false),
@@ -580,7 +637,7 @@ impl Solver {
     /// Etape pour éliminer ou forcer une valeur dans une paire de chiffres possible d'une case
     /// parce que son choix entraîne une incohérence dans la grille ou sa résolution
     fn solve_try_and_see(&mut self) -> SolvingAction {
-        if self.try_and_see_recursion_level >= MAX_TRY_AND_SEE_RECURSION_LEVEL {
+        if self.try_and_see_recursion_level >= self.max_try_and_see_recursion_level {
             return SolvingAction::NoAction;
         }
 
@@ -605,9 +662,10 @@ impl Solver {
                 let new_cell = new_grid.get_mut_cell(*line_column).unwrap();
                 new_cell.content = CellContent::Number(*n);
                 let mut new_solver = Solver::new(&new_grid);
+                new_solver.max_try_and_see_recursion_level = self.max_try_and_see_recursion_level;
                 new_solver.try_and_see_recursion_level = self.try_and_see_recursion_level;
                 // println!("Recursion level = {}", self.try_and_see_recursion_level);
-                match new_solver.solve(|_action| {}) {
+                match new_solver.solve(&[]) {
                     Err(_) => {
                         // Bingo !
                         // La valeur n pour line_column entraîne une incohérence de la grille
@@ -897,7 +955,7 @@ mod test {
         .unwrap();
 
         let mut solver = Solver::new(&grid);
-        let _ = solver.solve(|_action| {});
+        let _ = solver.solve(&[]);
         assert!(solver.is_solved());
     }
 
@@ -920,7 +978,7 @@ mod test {
                 let file_content = fs::read_to_string(path_str).unwrap();
                 let grid = Grid::from_str(&file_content).unwrap();
                 let mut solver = Solver::new(&grid);
-                let res_solver = solver.solve(|_action| {});
+                let res_solver = solver.solve(&[SolvingOption::MaxTryAndSeeRecursionLevel(3)]);
 
                 match res_solver {
                     Err(e) => println!("Erreur résolution avec le fichier '{path_str}': {e}\n"),

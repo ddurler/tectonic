@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::str::FromStr;
 
-use tectonic::{Grid, Solver};
+use tectonic::{Grid, Solver, SolvingOption};
 
 pub fn main() {
     // Arguments de la ligne de commande
@@ -24,7 +24,7 @@ Solver de grille 'Tectonic'.
 `Tectonic` est un jeu de logique.
 Ce jeu est également connu sous le nom de 'Suguru' ou 'Kemaru'.
 
-Il faut compléter une grille avec les chiffres manquants dans chaque zone entourée de gras, sachant que :
+Il faut compléter une grille avec les chiffres manquants dans chaque zone, sachant que :
 
 1. Une zone de deux cases contient les chiffres 1 et 2, une zone de 3 cases les chiffres 1, 2 et 3, etc.
 2. Un chiffre placé dans une case ne peut se retrouver dans aucune des cases qui l'entoure (en diagonale y compris).
@@ -57,8 +57,8 @@ c  c  c2
     println!("La résolution de cette grille est alors :\n");
     let grid = Grid::from_str(file_content).unwrap();
     let mut solver = Solver::new(&grid);
-    let _ = solver.solve(|action| println!("{action}"));
-    println!("{solver}");
+    let _ = solver.solve(&[SolvingOption::StepPrintAction]);
+    println!("\n{solver}");
 }
 
 // Résolution d'une grille définie dans un fichier
@@ -70,7 +70,7 @@ fn solve_grid_in_file(path: &str) {
             Err(e) => println!("Erreur dans le fichier '{path}': {e}\n"),
             Ok(grid) => {
                 let mut solver = Solver::new(&grid);
-                let res_solver = solver.solve(|action| println!("{action}"));
+                let res_solver = solver.solve(&[SolvingOption::StepPrintAction]);
                 match res_solver {
                     Err(e) => println!("Erreur résolution avec le fichier '{path}': {e}\n"),
                     Ok(done) => {
