@@ -12,7 +12,7 @@ use crate::simple_09_set::Simple09Set;
 // est très complexe (ou si elle est en cours de construction)
 // On stoppe les niveaux trop élevés de recherche par récursion qui correspondrait
 // à une solution trop difficile à trouver
-const MAX_TRY_AND_SEE_RECURSION_LEVEL: i32 = 2;
+const MAX_TRY_AND_SEE_RECURSION_LEVEL: i32 = 3;
 
 /// Action possible effectuée à chaque étape de résolution
 #[derive(Debug, PartialEq, Eq)]
@@ -180,7 +180,7 @@ impl fmt::Display for DifficultyLevel {
             Self::Easy => write!(f, "Difficulté facile"),
             Self::Medium => write!(f, "Difficulté moyenne"),
             Self::Hard => write!(f, "Difficile"),
-            Self::VeryHard => write!(f, "Très Difficile"),
+            Self::VeryHard => write!(f, "Très difficile"),
         }
     }
 }
@@ -759,6 +759,8 @@ impl Solver {
 mod test {
 
     use super::*;
+    use std::fs;
+    use std::path;
     use std::str::FromStr;
 
     #[test]
@@ -897,5 +899,34 @@ mod test {
         let mut solver = Solver::new(&grid);
         let _ = solver.solve(|_action| {});
         assert!(solver.is_solved());
+    }
+
+    #[test]
+    fn test_all_examples() {
+        // Test tous les fichiers ""./examples/*.txt" pour résolution
+        for entry in fs::read_dir("./examples").unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            let path_str = path.to_str().unwrap();
+            let path_path = path::Path::new(path_str);
+
+            if path_path.is_file()
+                && path_path
+                    .extension()
+                    .map_or(false, |ext| ext.eq_ignore_ascii_case("txt"))
+            {
+                println!("Trying to solve '{path_str}'...");
+
+                let file_content = fs::read_to_string(path_str).unwrap();
+                let grid = Grid::from_str(&file_content).unwrap();
+                let mut solver = Solver::new(&grid);
+                let res_solver = solver.solve(|_action| {});
+
+                match res_solver {
+                    Err(e) => println!("Erreur résolution avec le fichier '{path_str}': {e}\n"),
+                    Ok(done) => assert!(done),
+                }
+            }
+        }
     }
 }
