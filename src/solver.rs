@@ -7,6 +7,13 @@ use crate::line_column::LineColumn;
 use crate::neighboring_line_columns::NeighboringLineColumns;
 use crate::simple_09_set::Simple09Set;
 
+// Niveau max de récursion avec la fonction récursive `solve_try_and_see`.
+// Cette fonction peut être appelée récursivement si la grille à résoudre
+// est très complexe (ou si elle est en cours de construction)
+// On stoppe les niveaux trop élevés de recherche par récursion qui correspondrait
+// à une solution trop difficile à trouver
+const MAX_TRY_AND_SEE_RECURSION_LEVEL: i32 = 2;
+
 /// Action possible effectuée à chaque étape de résolution
 #[derive(Debug, PartialEq, Eq)]
 pub enum SolvingAction {
@@ -30,6 +37,10 @@ pub enum SolvingAction {
 
     /// Suppression des chiffres d'une paire de valeurs dans les cases voisines
     DualValuesPair(LineColumn, LineColumn, LineColumn, Vec<u8>),
+
+    // Force une valeur dans une paire de possibilité car elle mène une solution
+    // après évaluation de la résolution en testant cette valeur
+    TryAndSolve(LineColumn, u8, u8),
 
     // Suppression d'une valeur dans une paire de possibilité car elle mène à une impossibilité
     // après évaluation de la résolution en testant cette valeur
@@ -76,6 +87,12 @@ impl fmt::Display for SolvingAction {
                 write!(
                     f,
                     "{vec_n:?} impossible dans la case {line_column} selon les cases voisines {line_column_pair_1} et {line_column_pair_2}"
+                )
+            }
+            Self::TryAndSolve(line_column, n_ok, autre_n) => {
+                write!(
+                    f,
+                    "Entre [{n_ok}] et [{autre_n}] pour {line_column}, [{n_ok}] mène à une solution"
                 )
             }
             Self::TryAndFail(line_column, n_fail, n_ok) => {
@@ -179,6 +196,9 @@ pub struct Solver {
 
     /// Difficulté rencontrée pendant la résolution
     pub difficulty_level: DifficultyLevel,
+
+    /// Niveau de récursion dans la rechercher try & see
+    pub try_and_see_recursion_level: i32,
 }
 
 impl fmt::Display for Solver {
@@ -198,6 +218,7 @@ impl Solver {
             grid: grid.clone(),
             init_cell_contents: false,
             difficulty_level: DifficultyLevel::default(),
+            try_and_see_recursion_level: 0,
         }
     }
 
@@ -264,7 +285,7 @@ impl Solver {
             (Self::solve_only_number_in_zone, DifficultyLevel::Easy),
             (Self::solve_numbers_neighboring, DifficultyLevel::Medium),
             (Self::solve_dual_values_pair, DifficultyLevel::Hard),
-            (Self::solve_try_and_fail, DifficultyLevel::VeryHard),
+            (Self::solve_try_and_see, DifficultyLevel::VeryHard),
         ];
 
         // Parcourt des fonctions de résolution à la recherche d'une action possible
@@ -556,9 +577,13 @@ impl Solver {
         SolvingAction::NoAction
     }
 
-    /// Etape pour éliminer une valeur dans une paire de chiffres possible d'une case
-    /// parce que son choix entraîne une incohérence dans la grille
-    fn solve_try_and_fail(&mut self) -> SolvingAction {
+    /// Etape pour éliminer ou forcer une valeur dans une paire de chiffres possible d'une case
+    /// parce que son choix entraîne une incohérence dans la grille ou sa résolution
+    fn solve_try_and_see(&mut self) -> SolvingAction {
+        if self.try_and_see_recursion_level >= MAX_TRY_AND_SEE_RECURSION_LEVEL {
+            return SolvingAction::NoAction;
+        }
+
         // HashMap des cases avec une paire de valeurs possibles
         let mut hash_map_line_column: HashMap<LineColumn, Simple09Set> = HashMap::new();
         for (line_column, cell) in &self.grid.hashmap_cells {
@@ -571,6 +596,7 @@ impl Solver {
 
         // On teste brutalement la résolution en forçant les valeurs possibles pour les cases sélectionnées
         // Parcourt du hash map avec les cases une paire de valeurs possibles
+        self.try_and_see_recursion_level += 1;
         for (line_column, simple_09_set) in &hash_map_line_column {
             let vec_n = simple_09_set.as_vec_u8();
             for n in &vec_n {
@@ -579,17 +605,34 @@ impl Solver {
                 let new_cell = new_grid.get_mut_cell(*line_column).unwrap();
                 new_cell.content = CellContent::Number(*n);
                 let mut new_solver = Solver::new(&new_grid);
-                if new_solver.solve(|_action| {}).is_err() {
-                    // Bingo !
-                    // La valeur n pour line_column entraîne une incohérence de la grille
-                    // On force l'autre valeur
-                    let autre_n = if vec_n[0] == *n { vec_n[1] } else { vec_n[0] };
-                    let cell = self.grid.get_mut_cell(*line_column).unwrap();
-                    cell.content = CellContent::Number(autre_n);
-                    return SolvingAction::TryAndFail(*line_column, *n, autre_n);
+                new_solver.try_and_see_recursion_level = self.try_and_see_recursion_level;
+                // println!("Recursion level = {}", self.try_and_see_recursion_level);
+                match new_solver.solve(|_action| {}) {
+                    Err(_) => {
+                        // Bingo !
+                        // La valeur n pour line_column entraîne une incohérence de la grille
+                        // On force l'autre valeur
+                        let autre_n = if vec_n[0] == *n { vec_n[1] } else { vec_n[0] };
+                        let cell = self.grid.get_mut_cell(*line_column).unwrap();
+                        cell.content = CellContent::Number(autre_n);
+                        return SolvingAction::TryAndFail(*line_column, *n, autre_n);
+                    }
+                    Ok(solved) => {
+                        if solved {
+                            // Bingo !
+                            // La valeur n pour line_column permet de résoudre la grille
+                            // On force cette valeur
+                            let autre_n = if vec_n[0] == *n { vec_n[1] } else { vec_n[0] };
+                            let cell = self.grid.get_mut_cell(*line_column).unwrap();
+                            cell.content = CellContent::Number(*n);
+                            return SolvingAction::TryAndSolve(*line_column, *n, autre_n);
+                        }
+                        // else, on n'a rien trouvé...
+                    }
                 }
             }
         }
+        self.try_and_see_recursion_level -= 1;
 
         SolvingAction::NoAction
     }
