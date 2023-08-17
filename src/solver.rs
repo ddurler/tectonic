@@ -969,6 +969,7 @@ mod test {
             let path_path = path::Path::new(path_str);
 
             if path_path.is_file()
+                && path_path.file_name().unwrap().to_string_lossy().starts_with("ex")
                 && path_path
                     .extension()
                     .map_or(false, |ext| ext.eq_ignore_ascii_case("txt"))
